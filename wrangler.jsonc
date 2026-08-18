@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Worker script (src/worker.js) handles /api/warranty/* — Dell's OAuth
+  // client secret has to live server-side, and Dell's API doesn't allow
+  // browser CORS anyway. Everything else (index.html/css/js) is served as
+  // static assets: Workers tries a matching static file first for every
+  // request and only falls through to the Worker script when nothing
+  // matches, so this doesn't need any explicit routing rules — see
+  // src/worker.js for the one exception (asset-binding fallback on a
+  // genuine 404).
+  "name": "warranty-lookup",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-18",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS"
+  }
+}

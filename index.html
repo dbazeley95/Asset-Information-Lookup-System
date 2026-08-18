@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warranty Lookup</title>
+  <meta name="description" content="Look up manufacturer warranty status by serial number or service tag." />
+  <!-- Applies a saved explicit-override theme before first paint, inline and
+       blocking, so there's no flash of the wrong theme while js/app.js
+       (deferred as a module) loads. "System" (the default) leaves no
+       data-theme attribute, so css/styles.css's prefers-color-scheme media
+       query decides instead. -->
+  <script>
+    (function () {
+      var THEME_VALUES = ['light', 'dark'];
+      var theme = localStorage.getItem('warranty:v1:theme');
+      if (THEME_VALUES.indexOf(theme) !== -1) {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23142146'/%3E%3Cpath d='M50 18 L82 30 V50 C82 70 68 84 50 90 C32 84 18 70 18 50 V30 Z' fill='none' stroke='%23ffffff' stroke-width='7'/%3E%3Cpath d='M35 50 L45 60 L67 38' fill='none' stroke='%234ade80' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <meta name="theme-color" content="#142146" />
+  <link rel="stylesheet" href="css/styles.css?v=1.0.0" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <header class="app-header">
+    <div class="brand-box">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="34" height="34">
+          <rect width="100" height="100" rx="20" fill="currentColor" class="brand-mark-bg" />
+          <path d="M50 18 L82 30 V50 C82 70 68 84 50 90 C32 84 18 70 18 50 V30 Z" fill="none" stroke="#fff" stroke-width="7" />
+          <path d="M35 50 L45 60 L67 38" fill="none" stroke="#4ade80" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1 class="brand-title">Warranty Lookup</h1>
+        <p class="subtitle">Check manufacturer warranty status by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
+      </div>
+      <button id="theme-toggle-btn" type="button" class="theme-toggle" aria-label="Toggle color theme">
+        <span id="theme-toggle-icon" aria-hidden="true"></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav id="vendor-tabs" class="vendor-tabs" aria-label="Manufacturer"></nav>
+
+    <main id="main-content" tabindex="-1">
+      <section id="coming-soon-panel" class="panel" hidden>
+        <h2 id="coming-soon-heading"></h2>
+        <p id="coming-soon-message" class="hint"></p>
+      </section>
+
+      <section id="lookup-panel" class="panel">
+        <h2 id="lookup-heading">Dell warranty lookup</h2>
+        <p class="hint">Enter one or more Dell service tags &mdash; one per line, or separated by commas/spaces. Up to 20 at a time.</p>
+        <label for="tags-input" class="sr-only">Service tags</label>
+        <textarea id="tags-input" rows="4" placeholder="e.g.&#10;7XJ4K52&#10;9P2QR13"></textarea>
+        <div class="lookup-actions">
+          <button id="lookup-btn" type="button" class="primary">
+            <span class="btn-icon" aria-hidden="true">&#128269;</span>
+            Look Up Warranty
+          </button>
+          <button id="clear-btn" type="button" class="secondary">Clear</button>
+        </div>
+        <p id="lookup-error" class="lookup-error" role="alert" hidden></p>
+      </section>
+
+      <section id="results-panel" class="panel" aria-live="polite" hidden>
+        <h2>Results</h2>
+        <div id="results-list" class="results-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="app-footer">
+    <p>Not affiliated with Dell, Lenovo, or Apple. Warranty data comes directly from each manufacturer's own API.</p>
+  </footer>
+
+  <script type="module" src="js/app.js?v=1.0.0"></script>
+</body>
+</html>
