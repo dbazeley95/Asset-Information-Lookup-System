@@ -282,6 +282,11 @@ input:focus-visible {
   font-size: 0.9rem;
 }
 
+.lookup-note {
+  margin-top: -0.5rem;
+  font-style: italic;
+}
+
 #coming-soon-panel {
   background: var(--coming-soon-bg);
   border-color: var(--coming-soon-bg);
