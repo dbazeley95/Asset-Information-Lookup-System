@@ -239,7 +239,10 @@ function renderResults(results) {
           <span class="result-tag">${escapeHtml(r.tag)}</span>
           <div class="result-model">${escapeHtml(r.model || 'Unknown model')}</div>
         </div>
-        <span class="status-badge status-${r.status}">${statusLabel(r.status)}</span>
+        <div class="result-badges">
+          ${r.warrantyMonths !== null && r.warrantyMonths !== undefined ? `<span class="months-badge" title="For the Freshservice import's Warranty (In Months) field">${r.warrantyMonths} mo</span>` : ''}
+          <span class="status-badge status-${r.status}">${statusLabel(r.status)}</span>
+        </div>
       </div>
       <p class="result-meta">
         ${r.orgName ? `Found in ${escapeHtml(r.orgName)}. ` : ''}

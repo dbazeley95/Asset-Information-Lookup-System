@@ -24,15 +24,15 @@
        since browsers cache them by URL far more stubbornly than normal
        page assets, sometimes for days, independent of server cache
        headers. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.7.0" />
-  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.7.0" />
-  <link rel="manifest" href="manifest.webmanifest?v=1.7.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.8.0" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.8.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=1.8.0" />
   <meta name="theme-color" content="#142146" />
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.7.0" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.8.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Asset Lookup" />
-  <link rel="stylesheet" href="css/styles.css?v=1.7.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.8.0" />
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -40,12 +40,12 @@
   <header class="app-header">
     <div class="brand-box">
       <div class="brand-mark" aria-hidden="true">
-        <img src="assets/icons/icon-192.png?v=1.7.0" width="68" height="68" alt="" />
+        <img src="assets/icons/icon-192.png?v=1.8.0" width="68" height="68" alt="" />
       </div>
       <div class="brand-text">
         <h1 class="brand-title">Asset Information Lookup System</h1>
         <div class="version-row">
-          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.7</button>
+          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.8</button>
           <span class="compiled-date">Compiled 18 Aug 2026</span>
         </div>
         <p class="subtitle">Look up manufacturer device and warranty information by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
@@ -137,6 +137,10 @@
          badge bumps. -->
     <div class="changelog-body">
       <div class="changelog-entry">
+        <div class="changelog-entry-head"><span class="changelog-version">1.8</span><h3 class="changelog-title">Warranty (In Months) Badge</h3></div>
+        <p>Each result card now shows a rounded "N mo" badge next to the status badge &mdash; the warranty length in months, from ship date to warranty end date. It's there to read straight into the Freshservice Asset Import tool's <strong>Warranty (In Months)</strong> field when importing devices, instead of having to work it out from the dates by hand.</p>
+      </div>
+      <div class="changelog-entry">
         <div class="changelog-entry-head"><span class="changelog-version">1.7</span><h3 class="changelog-title">Apple Lookups Now Retry Transient Errors</h3></div>
         <p>Apple requests (token, device list pages, coverage) now retry automatically with backoff on transient failures &mdash; 520/521/522/523/524/525/526/530 (Cloudflare edge error codes, since Apple's API is evidently served through Cloudflare too) and the usual 429/502/503/504. Since a full device-list fetch can mean dozens of sequential page requests for a large organisation, one blip used to fail the whole lookup; now it's retried up to 3 times with exponential backoff before giving up. Genuine failures (bad credentials, not found, etc.) are unaffected and still fail immediately.</p>
       </div>
@@ -185,7 +189,7 @@
       <p>For Apple, if more than one Apple School/Business Manager organisation is configured, every one of them is searched automatically &mdash; you don't need to know in advance which school or org a device belongs to.</p>
 
       <h3>3. Read the results</h3>
-      <p>Each entry gets its own card: model, ship date, a status badge (<strong>Active</strong>/<strong>Expired</strong>/<strong>Unknown</strong>), the warranty end date, and a table of every coverage entry on file with its own start/end dates. An Apple result also shows which org it was found in. An entry with no data on file shows an explanation instead.</p>
+      <p>Each entry gets its own card: model, ship date, a status badge (<strong>Active</strong>/<strong>Expired</strong>/<strong>Unknown</strong>), a warranty-length badge in months, the warranty end date, and a table of every coverage entry on file with its own start/end dates. The months badge is rounded from ship date to warranty end date &mdash; it's there to read straight into the Freshservice Asset Import tool's <strong>Warranty (In Months)</strong> field. An Apple result also shows which org it was found in. An entry with no data on file shows an explanation instead.</p>
 
       <h3>Settings</h3>
       <p>The gear icon (top right) opens <strong>Theme</strong> (System/Light/Dark), this <strong>Help</strong> guide, <strong>Release Notes</strong>, <strong>Leave Feedback</strong>, and &mdash; on browsers that support it (Chrome/Edge) &mdash; <strong>Install App</strong>, which adds a standalone, taskbar/home-screen-pinnable copy. Safari/iOS has no equivalent Install button, but Add to Home Screen from the Share sheet works there instead.</p>
@@ -195,6 +199,6 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=1.7.0"></script>
+  <script type="module" src="js/app.js?v=1.8.0"></script>
 </body>
 </html>

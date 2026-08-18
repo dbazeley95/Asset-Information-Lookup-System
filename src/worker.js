@@ -69,6 +69,24 @@ async function getDellToken(env) {
   return cachedToken.value;
 }
 
+// Rounds the span between two ISO dates (YYYY-MM-DD) to the nearest whole
+// month, e.g. for the Freshservice Asset Import tool's "Warranty (In
+// Months)" field, which drives its own Warranty Expiry Date calculation
+// from an Acquisition Date. Real ship/coverage dates rarely land on exact
+// month boundaries, so this is an average-month-length approximation
+// (365.25 / 12 days) rather than exact calendar-month arithmetic — good
+// enough to round-trip back to the 12/24/36/48-style terms manufacturers
+// actually sell, without the edge cases exact month math has around
+// month-end dates.
+function monthsBetween(startISO, endISO) {
+  if (!startISO || !endISO) return null;
+  const start = new Date(`${startISO}T00:00:00Z`);
+  const end = new Date(`${endISO}T00:00:00Z`);
+  const days = (end.getTime() - start.getTime()) / 86_400_000;
+  if (!Number.isFinite(days) || days <= 0) return null;
+  return Math.round(days / (365.25 / 12));
+}
+
 // Maps one raw Dell asset-entitlements record into the shape js/app.js
 // renders. Dell's own status/date fields vary in casing/format across API
 // versions, so this normalizes rather than passing the raw payload through.
@@ -96,14 +114,17 @@ function normalizeDellAsset(tag, raw) {
     status = daysRemaining >= 0 ? 'active' : 'expired';
   }
 
+  const shipDate = raw.shipDate ? raw.shipDate.slice(0, 10) : null;
+
   return {
     tag,
     valid: true,
     model: raw.productLineDescription || raw.productId || 'Unknown model',
-    shipDate: raw.shipDate ? raw.shipDate.slice(0, 10) : null,
+    shipDate,
     country: raw.countryCode || null,
     status,
     warrantyEndDate,
+    warrantyMonths: monthsBetween(shipDate, warrantyEndDate),
     daysRemaining,
     entitlements: mapped,
   };
@@ -402,14 +423,17 @@ function normalizeAppleAsset(tag, found) {
     status = daysRemaining >= 0 ? 'active' : 'expired';
   }
 
+  const shipDate = attrs.orderDateTime ? attrs.orderDateTime.slice(0, 10) : null;
+
   return {
     tag,
     valid: true,
     model: attrs.deviceModel || attrs.productType || 'Unknown model',
-    shipDate: attrs.orderDateTime ? attrs.orderDateTime.slice(0, 10) : null,
+    shipDate,
     country: null,
     status,
     warrantyEndDate,
+    warrantyMonths: monthsBetween(shipDate, warrantyEndDate),
     daysRemaining,
     entitlements: mapped,
     orgName,

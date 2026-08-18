@@ -394,6 +394,13 @@ a.secondary:hover {
   font-size: 0.9rem;
 }
 
+.result-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.65rem;
@@ -402,6 +409,22 @@ a.secondary:hover {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+/* Deliberately more prominent than a muted/neutral badge would be —
+   this number specifically exists to be read off and typed into the
+   Freshservice import tool's "Warranty (In Months)" field, so it needs
+   to be as scannable as the status badge next to it, not a quiet aside. */
+.months-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--muted-badge-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  white-space: nowrap;
 }
 .status-badge.status-active {
   background: var(--success-bg);
