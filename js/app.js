@@ -22,21 +22,42 @@ function applyTheme(theme) {
   } else {
     document.documentElement.setAttribute('data-theme', theme);
   }
-  const icon = document.getElementById('theme-toggle-icon');
-  icon.textContent = theme === 'dark' ? '\u{1F319}' : theme === 'light' ? '☀️' : '\u{1F5A5}️';
-  document.getElementById('theme-toggle-btn').setAttribute(
-    'aria-label',
-    `Color theme: ${theme}. Click to change.`
-  );
 }
 
 function initTheme() {
-  applyTheme(currentTheme());
-  document.getElementById('theme-toggle-btn').addEventListener('click', () => {
-    const next = THEME_VALUES[(THEME_VALUES.indexOf(currentTheme()) + 1) % THEME_VALUES.length];
-    localStorage.setItem(THEME_KEY, next);
-    applyTheme(next);
+  const theme = currentTheme();
+  applyTheme(theme);
+  const select = document.getElementById('theme-select');
+  select.value = theme;
+  select.addEventListener('change', (e) => {
+    localStorage.setItem(THEME_KEY, e.target.value);
+    applyTheme(e.target.value);
   });
+}
+
+function initDialogs() {
+  const settingsDialog = document.getElementById('settings-dialog');
+  const releaseNotesDialog = document.getElementById('release-notes-dialog');
+
+  // Native <dialog> already closes on Escape and traps focus — this only
+  // adds click-outside-to-close, since that's not built in.
+  function closeOnBackdropClick(dialog) {
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+  }
+
+  document.getElementById('settings-menu-btn').addEventListener('click', () => settingsDialog.showModal());
+  document.getElementById('settings-dialog-close').addEventListener('click', () => settingsDialog.close());
+  closeOnBackdropClick(settingsDialog);
+
+  document.getElementById('release-notes-btn').addEventListener('click', () => {
+    settingsDialog.close();
+    releaseNotesDialog.showModal();
+  });
+  document.getElementById('version-badge-btn').addEventListener('click', () => releaseNotesDialog.showModal());
+  document.getElementById('release-notes-close').addEventListener('click', () => releaseNotesDialog.close());
+  closeOnBackdropClick(releaseNotesDialog);
 }
 
 function renderVendorTabs() {
@@ -226,6 +247,7 @@ async function runLookup() {
 
 function init() {
   initTheme();
+  initDialogs();
   renderVendorTabs();
   renderVendorPanel();
 
