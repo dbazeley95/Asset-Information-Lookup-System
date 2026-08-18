@@ -164,6 +164,38 @@ function getAppleHost(env) {
   return scope === 'business.api' ? 'https://api-business.apple.com' : 'https://api-school.apple.com';
 }
 
+// 520/521/522/523/524/525/526/530 are Cloudflare edge codes for a
+// transient failure talking to the origin (Apple's API is evidently
+// served through Cloudflare too) — seen in practice while paginating a
+// large org's device list, where dozens of sequential page requests give
+// plenty of chances for one to hit a passing blip. 429/502/503/504 are
+// the equivalent "try again shortly" signals from a plain origin. None of
+// these mean the request itself was wrong, so they're worth a retry;
+// anything else (401, 404, etc.) is returned immediately for the caller
+// to handle on its own terms.
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 530]);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options, { retries = 3, baseDelayMs = 400 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await sleep(baseDelayMs * 2 ** attempt);
+      continue;
+    }
+    if (res.ok || attempt >= retries || !RETRYABLE_STATUSES.has(res.status)) {
+      return res;
+    }
+    await sleep(baseDelayMs * 2 ** attempt);
+  }
+}
+
 // clientId -> { value, expiresAt }, same reasoning as Dell's cachedToken.
 const appleTokenCache = new Map();
 
@@ -242,7 +274,7 @@ async function getAppleToken(org, env) {
     scope,
   });
 
-  const res = await fetch(tokenUrl, {
+  const res = await fetchWithRetry(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
@@ -280,7 +312,7 @@ async function getAppleOrgDeviceMap(org, env) {
   let url = `${host}/v1/orgDevices?limit=100`;
 
   while (url) {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 401) {
       appleTokenCache.delete(org.clientId);
       throw new WarrantyError(502, `Apple authentication expired mid-request for "${org.name}" — please try again.`);
@@ -311,7 +343,7 @@ async function findAppleDeviceInOrg(serial, org, env) {
   const device = deviceMap.get(serial.toUpperCase());
   if (!device) return null;
 
-  const coverageRes = await fetch(`${host}/v1/orgDevices/${device.id}/appleCareCoverage`, {
+  const coverageRes = await fetchWithRetry(`${host}/v1/orgDevices/${device.id}/appleCareCoverage`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (coverageRes.status === 401) {
