@@ -1,17 +1,26 @@
 // Backend for /api/warranty/*. Every other request falls through to the
 // static assets (index.html/css/js) via env.ASSETS — see the default
-// export below. This exists specifically because Dell's warranty API
-// needs a server-held OAuth client secret and doesn't allow browser CORS,
+// export below. This exists specifically because Dell's and Apple's APIs
+// both need server-held OAuth credentials and don't allow browser CORS,
 // so the lookup can't be done from js/app.js directly the way the rest of
 // this app's UI logic can.
 //
-// Requires two Worker secrets, set via `wrangler secret put`:
+// Dell requires two Worker secrets, set via `wrangler secret put`:
 //   DELL_CLIENT_ID
 //   DELL_CLIENT_SECRET
-// from a Dell TechDirect API (apidp.dell.com) registration. See README.md.
+// from a Dell TechDirect API (apidp.dell.com) registration.
+//
+// Apple requires one Worker secret, APPLE_ORGS — a JSON array, one entry
+// per Apple School/Business Manager API account:
+//   [{ "name": "...", "clientId": "...", "keyId": "...", "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" }]
+// A lookup tries every configured org in parallel and uses whichever one
+// actually has the device — see README.md for how to generate these.
 
 const MAX_TAGS_PER_REQUEST = 20;
-const TAG_PATTERN = /^[A-Za-z0-9]{4,10}$/;
+// Dell service tags are typically 7 chars; Apple serials run up to 12
+// (older format) or as few as 8 (current format) — one shared pattern
+// covers both rather than branching per vendor.
+const TAG_PATTERN = /^[A-Za-z0-9]{4,12}$/;
 
 class WarrantyError extends Error {
   constructor(status, message) {
@@ -66,7 +75,7 @@ async function getDellToken(env) {
 function normalizeDellAsset(tag, raw) {
   const entitlements = Array.isArray(raw?.entitlements) ? raw.entitlements : [];
   if (!raw || raw.invalid || entitlements.length === 0) {
-    return { tag, valid: false, error: 'No warranty information found for this service tag.' };
+    return { tag, valid: false, error: 'No matching device found.' };
   }
 
   const mapped = entitlements.map((e) => ({
@@ -123,6 +132,229 @@ async function lookupDell(tags, env) {
   return tags.map((tag) => normalizeDellAsset(tag, byTag.get(tag.toUpperCase())));
 }
 
+// ---------------------------------------------------------------------
+// Apple School/Business Manager — unlike Dell, an organisation can have
+// several separate API accounts (e.g. one per school in a trust), and a
+// given device only exists behind whichever one manages it. Every
+// configured org is queried in parallel per serial number and whichever
+// one actually has the device wins.
+//
+// Apple's exact API surface (host, OAuth scope, and the orgDevices filter
+// syntax) couldn't be fully confirmed against Apple's own docs while
+// building this — apple.com's developer docs are JS-rendered and blocked
+// automated fetching. The values below are the ones multiple independent
+// third-party writeups converged on, but they're all overridable via
+// secrets (APPLE_API_HOST / APPLE_SCOPE / APPLE_TOKEN_URL) without a code
+// change if your own portal's instructions say otherwise. See README.md.
+// ---------------------------------------------------------------------
+
+// clientId -> { value, expiresAt }, same reasoning as Dell's cachedToken.
+const appleTokenCache = new Map();
+
+function base64url(bytes) {
+  let binary = '';
+  const arr = new Uint8Array(bytes);
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function importApplePrivateKey(pem, orgName) {
+  try {
+    const b64 = pem
+      .replace(/-----BEGIN PRIVATE KEY-----/, '')
+      .replace(/-----END PRIVATE KEY-----/, '')
+      .replace(/\s+/g, '');
+    const der = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  } catch {
+    throw new WarrantyError(500, `Apple private key for "${orgName}" is malformed — expected a PKCS8 PEM (the .pem Apple's portal downloads once when the API account is created).`);
+  }
+}
+
+// Builds and signs the JWT "client assertion" Apple's OAuth token endpoint
+// requires in place of a plain client secret (Dell's approach) — see
+// "Implementing OAuth for the Apple School and Business Manager API".
+async function signAppleClientAssertion(org, env) {
+  const tokenUrl = env.APPLE_TOKEN_URL || 'https://account.apple.com/auth/oauth2/token';
+  const header = { alg: 'ES256', kid: org.keyId, typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: org.clientId,
+    iss: org.clientId,
+    aud: tokenUrl,
+    iat: now,
+    exp: now + 300, // short-lived assertion — Apple allows up to 180 days, but there's no reason to sign one that lives longer than this single request
+    jti: crypto.randomUUID(),
+  };
+  const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
+  const encPayload = base64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signingInput = `${encHeader}.${encPayload}`;
+
+  const key = await importApplePrivateKey(org.privateKey, org.name);
+  // WebCrypto's ECDSA signatures are already raw r||s (IEEE P1363), which
+  // is exactly what a JWS ES256 signature needs — no DER conversion.
+  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(signingInput));
+  return `${signingInput}.${base64url(signature)}`;
+}
+
+async function getAppleToken(org, env) {
+  const cached = appleTokenCache.get(org.clientId);
+  if (cached && cached.expiresAt > Date.now() + 30_000) {
+    return cached.value;
+  }
+
+  const tokenUrl = env.APPLE_TOKEN_URL || 'https://account.apple.com/auth/oauth2/token';
+  const scope = env.APPLE_SCOPE || 'school.api';
+  const assertion = await signAppleClientAssertion(org, env);
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: org.clientId,
+    client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+    client_assertion: assertion,
+    scope,
+  });
+
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  if (!res.ok) {
+    throw new WarrantyError(502, `Apple authentication failed for "${org.name}" (${res.status}).`);
+  }
+  const data = await res.json();
+  if (!data.access_token) {
+    throw new WarrantyError(502, `Apple authentication response for "${org.name}" was missing an access token.`);
+  }
+  const value = data.access_token;
+  appleTokenCache.set(org.clientId, {
+    value,
+    expiresAt: Date.now() + (data.expires_in ? data.expires_in * 1000 : 55 * 60 * 1000),
+  });
+  return value;
+}
+
+// Looks a serial up in one org: null means "not in this org" (not an
+// error — the caller tries the rest); a thrown WarrantyError means this
+// org's own request genuinely failed (bad creds, Apple outage, etc.).
+async function findAppleDeviceInOrg(serial, org, env) {
+  const token = await getAppleToken(org, env);
+  const host = env.APPLE_API_HOST || 'https://api-business.apple.com';
+
+  const deviceUrl = new URL(`${host}/v1/orgDevices`);
+  deviceUrl.searchParams.set('filter[serialNumber]', serial);
+  const deviceRes = await fetch(deviceUrl, { headers: { Authorization: `Bearer ${token}` } });
+
+  if (deviceRes.status === 401) {
+    appleTokenCache.delete(org.clientId);
+    throw new WarrantyError(502, `Apple authentication expired mid-request for "${org.name}" — please try again.`);
+  }
+  if (!deviceRes.ok) {
+    throw new WarrantyError(502, `Apple device lookup failed for "${org.name}" (${deviceRes.status}).`);
+  }
+  const deviceData = await deviceRes.json();
+  const device = deviceData?.data?.[0];
+  if (!device) return null;
+
+  const coverageRes = await fetch(`${host}/v1/orgDevices/${device.id}/appleCareCoverage`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!coverageRes.ok) {
+    throw new WarrantyError(502, `Apple coverage lookup failed for "${org.name}" (${coverageRes.status}).`);
+  }
+  const coverageData = await coverageRes.json();
+  const coverage = Array.isArray(coverageData?.data) ? coverageData.data : [];
+
+  return { device, coverage, orgName: org.name };
+}
+
+// Queries every configured org for one serial in parallel. If every org
+// fails outright, the failure is surfaced (so a misconfigured org doesn't
+// silently masquerade as "not found") — but if at least one org answered
+// successfully, a clean "not found" wins over another org's error.
+async function findAppleDeviceAcrossOrgs(serial, orgs, env) {
+  const attempts = await Promise.allSettled(orgs.map((org) => findAppleDeviceInOrg(serial, org, env)));
+  for (const attempt of attempts) {
+    if (attempt.status === 'fulfilled' && attempt.value) return attempt.value;
+  }
+  if (attempts.length && attempts.every((a) => a.status === 'rejected')) {
+    throw attempts[0].reason;
+  }
+  return null;
+}
+
+function normalizeAppleAsset(tag, found) {
+  if (!found) {
+    return { tag, valid: false, error: 'No matching device found.' };
+  }
+  const { device, coverage, orgName } = found;
+  const attrs = device.attributes || {};
+
+  const mapped = coverage.map((c) => {
+    const a = c.attributes || {};
+    return {
+      serviceLevelDescription: a.description || a.status || 'Unknown coverage',
+      serviceLevelCode: a.status || null,
+      startDate: a.startDateTime ? a.startDateTime.slice(0, 10) : null,
+      endDate: a.endDateTime ? a.endDateTime.slice(0, 10) : null,
+    };
+  });
+
+  const endDates = mapped.map((e) => e.endDate).filter(Boolean).sort();
+  const warrantyEndDate = endDates.length ? endDates[endDates.length - 1] : null;
+
+  let status = 'unknown';
+  let daysRemaining = null;
+  if (warrantyEndDate) {
+    const end = new Date(`${warrantyEndDate}T23:59:59Z`);
+    daysRemaining = Math.ceil((end.getTime() - Date.now()) / 86_400_000);
+    status = daysRemaining >= 0 ? 'active' : 'expired';
+  }
+
+  return {
+    tag,
+    valid: true,
+    model: attrs.deviceModel || attrs.productType || 'Unknown model',
+    shipDate: attrs.orderDateTime ? attrs.orderDateTime.slice(0, 10) : null,
+    country: null,
+    status,
+    warrantyEndDate,
+    daysRemaining,
+    entitlements: mapped,
+    orgName,
+  };
+}
+
+function getAppleOrgs(env) {
+  if (!env.APPLE_ORGS) return [];
+  try {
+    const parsed = JSON.parse(env.APPLE_ORGS);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function lookupApple(tags, env) {
+  const orgs = getAppleOrgs(env);
+  if (orgs === null) {
+    throw new WarrantyError(500, 'Apple credentials are misconfigured on the server (APPLE_ORGS is not valid JSON).');
+  }
+  if (orgs.length === 0) {
+    throw new WarrantyError(500, 'Apple credentials are not configured on the server.');
+  }
+
+  // Tags run sequentially (each trying every org in parallel) rather than
+  // all-tags-all-orgs at once, to keep the burst of concurrent subrequests
+  // against Apple's API bounded regardless of how many tags were pasted in.
+  const results = [];
+  for (const tag of tags) {
+    const found = await findAppleDeviceAcrossOrgs(tag, orgs, env);
+    results.push(normalizeAppleAsset(tag, found));
+  }
+  return results;
+}
+
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -149,18 +381,18 @@ async function handleWarrantyRequest(request, env, vendor) {
     return jsonResponse({ error: `These don't look like valid service tags: ${badTags.join(', ')}` }, 400);
   }
 
-  if (vendor !== 'dell') {
+  if (vendor !== 'dell' && vendor !== 'apple') {
     return jsonResponse({ error: `${vendor} lookups aren't available yet.` }, 400);
   }
 
   try {
-    const results = await lookupDell(tags, env);
+    const results = vendor === 'dell' ? await lookupDell(tags, env) : await lookupApple(tags, env);
     return jsonResponse({ results });
   } catch (err) {
     if (err instanceof WarrantyError) {
       return jsonResponse({ error: err.message }, err.status);
     }
-    return jsonResponse({ error: 'Unexpected error contacting the warranty service.' }, 500);
+    return jsonResponse({ error: 'Unexpected error contacting the lookup service.' }, 500);
   }
 }
 
