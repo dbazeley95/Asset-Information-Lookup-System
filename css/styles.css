@@ -310,6 +310,39 @@ input:focus-visible {
   width: fit-content;
 }
 
+.lookup-pending-banner {
+  background: var(--coming-soon-bg);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+}
+.lookup-pending-banner p {
+  margin: 0 0 0.75rem;
+  color: var(--coming-soon-text);
+  font-size: 0.9rem;
+}
+#lookup-pending-link {
+  width: fit-content;
+}
+
+/* Resets the browser's default fieldset chrome (border/padding/margin)
+   so it's invisible until :disabled — at which point it's exactly what
+   we want: dims every control inside at once (textarea, both buttons)
+   without having to toggle each one individually in JS. */
+.lookup-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.lookup-fieldset:disabled {
+  opacity: 0.5;
+}
+.lookup-fieldset:disabled textarea,
+.lookup-fieldset:disabled button {
+  cursor: not-allowed;
+}
+
 textarea {
   width: 100%;
   background: var(--input-bg);
