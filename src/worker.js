@@ -139,17 +139,41 @@ async function lookupDell(tags, env) {
 // configured org is queried in parallel per serial number and whichever
 // one actually has the device wins.
 //
-// Apple's exact API surface (host, OAuth scope, and the orgDevices filter
-// syntax) couldn't be fully confirmed against Apple's own docs while
-// building this — apple.com's developer docs are JS-rendered and blocked
-// automated fetching. The values below are the ones multiple independent
-// third-party writeups converged on, but they're all overridable via
-// secrets (APPLE_API_HOST / APPLE_SCOPE / APPLE_TOKEN_URL) without a code
-// change if your own portal's instructions say otherwise. See README.md.
+// Host/scope/token-audience below are confirmed against a working
+// PowerShell script the org already uses successfully against
+// api-school.apple.com — not just third-party guesswork. Two details
+// that guesswork got wrong the first time round, now fixed:
+//   1. The JWT's `aud` claim is a *different* URL
+//      (.../auth/oauth2/v2/token) from the token endpoint actually
+//      POSTed to (.../auth/oauth2/token, no v2) — they looked like they
+//      should be the same URL, but aren't.
+//   2. `orgDevices` doesn't support filtering by serial number via a
+//      query param — the only reliable way to find a device is to page
+//      through the *entire* org device list and match locally, so
+//      that's what findAppleDeviceInOrg does (via a cached map, so this
+//      full fetch only happens once per org per cache window, not once
+//      per lookup).
+// All of it stays overridable via secrets (APPLE_API_HOST / APPLE_SCOPE
+// / APPLE_TOKEN_URL / APPLE_TOKEN_AUDIENCE) in case a different org's
+// portal ever points somewhere else. See README.md.
 // ---------------------------------------------------------------------
+
+function getAppleHost(env) {
+  if (env.APPLE_API_HOST) return env.APPLE_API_HOST;
+  const scope = env.APPLE_SCOPE || 'school.api';
+  return scope === 'business.api' ? 'https://api-business.apple.com' : 'https://api-school.apple.com';
+}
 
 // clientId -> { value, expiresAt }, same reasoning as Dell's cachedToken.
 const appleTokenCache = new Map();
+
+// clientId -> { map: Map<serial, {id, attributes}>, expiresAt } — built
+// by paginating the org's full device list (see the note above on why
+// there's no per-serial filter to call instead). Cached rather than
+// re-fetched on every lookup since a trust's device list can run into
+// the thousands and doesn't change minute to minute.
+const appleDeviceMapCache = new Map();
+const APPLE_DEVICE_MAP_TTL_MS = 30 * 60 * 1000;
 
 function base64url(bytes) {
   let binary = '';
@@ -175,13 +199,17 @@ async function importApplePrivateKey(pem, orgName) {
 // requires in place of a plain client secret (Dell's approach) — see
 // "Implementing OAuth for the Apple School and Business Manager API".
 async function signAppleClientAssertion(org, env) {
-  const tokenUrl = env.APPLE_TOKEN_URL || 'https://account.apple.com/auth/oauth2/token';
+  // Deliberately NOT the same URL as the token endpoint the assertion
+  // gets POSTed to (see the file-level note above) — Apple's audience
+  // claim points at the v2 URL regardless of which version of the token
+  // endpoint you actually call.
+  const audience = env.APPLE_TOKEN_AUDIENCE || 'https://account.apple.com/auth/oauth2/v2/token';
   const header = { alg: 'ES256', kid: org.keyId, typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: org.clientId,
     iss: org.clientId,
-    aud: tokenUrl,
+    aud: audience,
     iat: now,
     exp: now + 300, // short-lived assertion — Apple allows up to 180 days, but there's no reason to sign one that lives longer than this single request
     jti: crypto.randomUUID(),
@@ -234,31 +262,62 @@ async function getAppleToken(org, env) {
   return value;
 }
 
+// Pages through this org's *entire* orgDevices list and returns a
+// SerialNumber -> { id, attributes } map — see the file-level note on
+// why there's no per-serial filter to call instead. The list response
+// already carries each device's model/order-date attributes, so those
+// are kept here rather than discarded, avoiding a third fetch per
+// lookup just to re-fetch what page already had. Cached per org.
+async function getAppleOrgDeviceMap(org, env) {
+  const cached = appleDeviceMapCache.get(org.clientId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.map;
+  }
+
+  const token = await getAppleToken(org, env);
+  const host = getAppleHost(env);
+  const map = new Map();
+  let url = `${host}/v1/orgDevices?limit=100`;
+
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) {
+      appleTokenCache.delete(org.clientId);
+      throw new WarrantyError(502, `Apple authentication expired mid-request for "${org.name}" — please try again.`);
+    }
+    if (!res.ok) {
+      throw new WarrantyError(502, `Apple device list fetch failed for "${org.name}" (${res.status}).`);
+    }
+    const page = await res.json();
+    for (const device of page.data || []) {
+      const serial = device.attributes?.serialNumber;
+      if (serial) map.set(serial.toUpperCase(), { id: device.id, attributes: device.attributes || {} });
+    }
+    url = page.links?.next || null;
+  }
+
+  appleDeviceMapCache.set(org.clientId, { map, expiresAt: Date.now() + APPLE_DEVICE_MAP_TTL_MS });
+  return map;
+}
+
 // Looks a serial up in one org: null means "not in this org" (not an
 // error — the caller tries the rest); a thrown WarrantyError means this
 // org's own request genuinely failed (bad creds, Apple outage, etc.).
 async function findAppleDeviceInOrg(serial, org, env) {
   const token = await getAppleToken(org, env);
-  const host = env.APPLE_API_HOST || 'https://api-business.apple.com';
+  const host = getAppleHost(env);
 
-  const deviceUrl = new URL(`${host}/v1/orgDevices`);
-  deviceUrl.searchParams.set('filter[serialNumber]', serial);
-  const deviceRes = await fetch(deviceUrl, { headers: { Authorization: `Bearer ${token}` } });
-
-  if (deviceRes.status === 401) {
-    appleTokenCache.delete(org.clientId);
-    throw new WarrantyError(502, `Apple authentication expired mid-request for "${org.name}" — please try again.`);
-  }
-  if (!deviceRes.ok) {
-    throw new WarrantyError(502, `Apple device lookup failed for "${org.name}" (${deviceRes.status}).`);
-  }
-  const deviceData = await deviceRes.json();
-  const device = deviceData?.data?.[0];
+  const deviceMap = await getAppleOrgDeviceMap(org, env);
+  const device = deviceMap.get(serial.toUpperCase());
   if (!device) return null;
 
   const coverageRes = await fetch(`${host}/v1/orgDevices/${device.id}/appleCareCoverage`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (coverageRes.status === 401) {
+    appleTokenCache.delete(org.clientId);
+    throw new WarrantyError(502, `Apple authentication expired mid-request for "${org.name}" — please try again.`);
+  }
   if (!coverageRes.ok) {
     throw new WarrantyError(502, `Apple coverage lookup failed for "${org.name}" (${coverageRes.status}).`);
   }

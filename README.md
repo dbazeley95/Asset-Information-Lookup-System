@@ -60,15 +60,19 @@ own **API account**, created inside that org's own portal:
    school), repeat this for each one — this tool is built to search all
    of them per lookup, you don't have to pick one.
 
-> **Note on API details:** Apple's own developer docs are JS-rendered and
-> couldn't be fully verified while building this integration. The host
-> (`api-business.apple.com`), OAuth scope (`school.api`), and the
-> `orgDevices` filter syntax in `src/worker.js` are the values several
-> independent third-party writeups converged on, not something confirmed
-> against Apple's primary docs directly — expect a possible debug/adjust
-> pass once you have real credentials to test with. All three are
-> overridable via secrets (`APPLE_API_HOST`, `APPLE_SCOPE`,
-> `APPLE_TOKEN_URL`) without touching code if they turn out wrong.
+> **Note on API details:** the host (`api-school.apple.com` for
+> `school.api`, `api-business.apple.com` for `business.api`), the OAuth
+> token flow, and the `orgDevices` pagination approach in
+> `src/worker.js` are confirmed against a working script, not just
+> guesswork — including two non-obvious details: the JWT's `aud` claim
+> is a *different* URL from the token endpoint actually POSTed to, and
+> `orgDevices` has no reliable per-serial filter — a lookup has to page
+> through the org's entire device list and match locally (cached for 30
+> minutes per org, so this only costs a full fetch once per cache
+> window, not once per lookup). All of it stays overridable via secrets
+> (`APPLE_API_HOST`, `APPLE_SCOPE`, `APPLE_TOKEN_URL`,
+> `APPLE_TOKEN_AUDIENCE`) in case a different org's portal ever points
+> somewhere else.
 
 ### 3. Install Wrangler and set secrets
 

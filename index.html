@@ -24,15 +24,15 @@
        since browsers cache them by URL far more stubbornly than normal
        page assets, sometimes for days, independent of server cache
        headers. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.3.0" />
-  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.3.0" />
-  <link rel="manifest" href="manifest.webmanifest?v=1.3.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.4.0" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.4.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=1.4.0" />
   <meta name="theme-color" content="#142146" />
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.3.0" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.4.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Asset Lookup" />
-  <link rel="stylesheet" href="css/styles.css?v=1.3.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.4.0" />
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -40,12 +40,12 @@
   <header class="app-header">
     <div class="brand-box">
       <div class="brand-mark" aria-hidden="true">
-        <img src="assets/icons/icon-192.png?v=1.3.0" width="68" height="68" alt="" />
+        <img src="assets/icons/icon-192.png?v=1.4.0" width="68" height="68" alt="" />
       </div>
       <div class="brand-text">
         <h1 class="brand-title">Asset Information Lookup System</h1>
         <div class="version-row">
-          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.3</button>
+          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.4</button>
           <span class="compiled-date">Compiled 18 Aug 2026</span>
         </div>
         <p class="subtitle">Look up manufacturer device and warranty information by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
@@ -136,6 +136,10 @@
          badge bumps. -->
     <div class="changelog-body">
       <div class="changelog-entry">
+        <div class="changelog-entry-head"><span class="changelog-version">1.4</span><h3 class="changelog-title">Apple Lookup Fixes, Confirmed Against a Working Script</h3></div>
+        <p>Three fixes to the Apple integration added in 1.3, based on a working PowerShell script already in use here: the API host now correctly points at <code>api-school.apple.com</code> (was defaulting to the Business Manager host); the token request's <code>aud</code> claim now uses the correct separate v2 URL instead of reusing the token endpoint's own URL; and device lookup now pages through each org's full device list rather than relying on a per-serial filter that doesn't actually work, caching the result for 30 minutes per org so repeat lookups stay fast. No visible UI changes.</p>
+      </div>
+      <div class="changelog-entry">
         <div class="changelog-entry-head"><span class="changelog-version">1.3</span><h3 class="changelog-title">Apple Lookup, Leave Feedback, and "Information" Instead of "Warranty"</h3></div>
         <p>Apple is now a live tab, alongside Dell &mdash; looks up AppleCare/warranty coverage via the Apple School/Business Manager API. If more than one Apple org is configured on the server, every one is searched automatically per serial number, and the result shows which org it was found in. Headings and buttons now say "information" rather than "warranty" throughout (e.g. "Look Up Information"), since Apple results carry more than just warranty status. Settings also gained a <strong>Leave Feedback</strong> mailto link.</p>
       </div>
@@ -178,6 +182,6 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=1.3.0"></script>
+  <script type="module" src="js/app.js?v=1.4.0"></script>
 </body>
 </html>
