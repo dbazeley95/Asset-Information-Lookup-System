@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Warranty Lookup</title>
+  <title>Asset Information Lookup System</title>
   <meta name="description" content="Look up manufacturer warranty status by serial number or service tag." />
   <!-- Applies a saved explicit-override theme before first paint, inline and
        blocking, so there's no flash of the wrong theme while js/app.js
@@ -19,7 +19,7 @@
       }
     })();
   </script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23142146'/%3E%3Cpath d='M50 18 L82 30 V50 C82 70 68 84 50 90 C32 84 18 70 18 50 V30 Z' fill='none' stroke='%23ffffff' stroke-width='7'/%3E%3Cpath d='M35 50 L45 60 L67 38' fill='none' stroke='%234ade80' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23142146'/%3E%3Cpath d='M50 18 L82 30 V50 C82 70 68 84 50 90 C32 84 18 70 18 50 V30 Z' fill='none' stroke='%23ffffff' stroke-width='7'/%3E%3Cpath d='M38 40 L62 60 M62 40 L38 60' fill='none' stroke='%234ade80' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <meta name="theme-color" content="#142146" />
   <link rel="stylesheet" href="css/styles.css?v=1.0.0" />
 </head>
@@ -32,11 +32,11 @@
         <svg viewBox="0 0 100 100" width="34" height="34">
           <rect width="100" height="100" rx="20" fill="currentColor" class="brand-mark-bg" />
           <path d="M50 18 L82 30 V50 C82 70 68 84 50 90 C32 84 18 70 18 50 V30 Z" fill="none" stroke="#fff" stroke-width="7" />
-          <path d="M35 50 L45 60 L67 38" fill="none" stroke="#4ade80" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M38 40 L62 60 M62 40 L38 60" fill="none" stroke="#4ade80" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </div>
       <div class="brand-text">
-        <h1 class="brand-title">Warranty Lookup</h1>
+        <h1 class="brand-title">Asset Information Lookup System</h1>
         <p class="subtitle">Check manufacturer warranty status by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
       </div>
       <button id="theme-toggle-btn" type="button" class="theme-toggle" aria-label="Toggle color theme">

@@ -97,6 +97,15 @@ function setError(message) {
   el.textContent = message;
 }
 
+// Worker responses use ISO (YYYY-MM-DD) throughout — only converted to
+// UK style (DD/MM/YYYY) here, at the point of display.
+function formatDateUK(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
 function statusLabel(status) {
   if (status === 'active') return 'Active';
   if (status === 'expired') return 'Expired';
@@ -135,8 +144,8 @@ function renderResults(results) {
         (e) => `
         <tr>
           <td>${escapeHtml(e.serviceLevelDescription)}</td>
-          <td>${escapeHtml(e.startDate || '—')}</td>
-          <td>${escapeHtml(e.endDate || '—')}</td>
+          <td>${escapeHtml(formatDateUK(e.startDate) || '—')}</td>
+          <td>${escapeHtml(formatDateUK(e.endDate) || '—')}</td>
         </tr>`
       )
       .join('');
@@ -150,8 +159,8 @@ function renderResults(results) {
         <span class="status-badge status-${r.status}">${statusLabel(r.status)}</span>
       </div>
       <p class="result-meta">
-        ${r.shipDate ? `Shipped ${escapeHtml(r.shipDate)}. ` : ''}
-        ${r.warrantyEndDate ? `Warranty through ${escapeHtml(r.warrantyEndDate)} (${escapeHtml(formatDaysRemaining(r.daysRemaining))}).` : 'No warranty end date on file.'}
+        ${r.shipDate ? `Shipped ${escapeHtml(formatDateUK(r.shipDate))}. ` : ''}
+        ${r.warrantyEndDate ? `Warranty through ${escapeHtml(formatDateUK(r.warrantyEndDate))} (${escapeHtml(formatDaysRemaining(r.daysRemaining))}).` : 'No warranty end date on file.'}
       </p>
       ${
         rows
