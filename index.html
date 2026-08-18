@@ -24,15 +24,15 @@
        since browsers cache them by URL far more stubbornly than normal
        page assets, sometimes for days, independent of server cache
        headers. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.10.0" />
-  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.10.0" />
-  <link rel="manifest" href="manifest.webmanifest?v=1.10.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.11.0" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.11.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=1.11.0" />
   <meta name="theme-color" content="#142146" />
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.10.0" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.11.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Asset Lookup" />
-  <link rel="stylesheet" href="css/styles.css?v=1.10.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.11.0" />
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -40,12 +40,12 @@
   <header class="app-header">
     <div class="brand-box">
       <div class="brand-mark" aria-hidden="true">
-        <img src="assets/icons/icon-192.png?v=1.10.0" width="68" height="68" alt="" />
+        <img src="assets/icons/icon-192.png?v=1.11.0" width="68" height="68" alt="" />
       </div>
       <div class="brand-text">
         <h1 class="brand-title">Asset Information Lookup System</h1>
         <div class="version-row">
-          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.10</button>
+          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.11</button>
           <span class="compiled-date">Compiled 18 Aug 2026</span>
         </div>
         <p class="subtitle">Look up manufacturer device and warranty information by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
@@ -143,6 +143,10 @@
          badge bumps. -->
     <div class="changelog-body">
       <div class="changelog-entry">
+        <div class="changelog-entry-head"><span class="changelog-version">1.11</span><h3 class="changelog-title">Lenovo Now Looks Up Natively</h3></div>
+        <p>Lenovo moves from "External" to a real, built-in lookup &mdash; via Lenovo's eSupport WebAPI, using a ClientID (issued by a Lenovo Account Representative or Partner Program, not an online signup form). Tabs are now Apple, Dell, HP, Lenovo, SMART Tech. HP and SMART Tech stay External for now &mdash; see the README for what it'd take to bring either in-house.</p>
+      </div>
+      <div class="changelog-entry">
         <div class="changelog-entry-head"><span class="changelog-version">1.10</span><h3 class="changelog-title">SMART Technologies, Badged External</h3></div>
         <p>Added SMART Tech as a fourth "External" tab, alongside HP and Lenovo &mdash; opens SMART Technologies' own product warranty lookup in a new tab.</p>
       </div>
@@ -196,7 +200,7 @@
     </div>
     <div class="help-dialog-body">
       <h3>1. Pick a manufacturer</h3>
-      <p>Use the tabs near the top &mdash; <strong>Apple</strong> and <strong>Dell</strong> look up automatically here. <strong>HP</strong>, <strong>Lenovo</strong>, and <strong>SMART Tech</strong> are marked "External": none of them are wired into this tool yet, so their tab links straight through to the manufacturer's own official warranty lookup instead of searching here.</p>
+      <p>Use the tabs near the top &mdash; <strong>Apple</strong>, <strong>Dell</strong>, and <strong>Lenovo</strong> look up automatically here. <strong>HP</strong> and <strong>SMART Tech</strong> are marked "External": neither is wired into this tool yet, so their tab links straight through to the manufacturer's own official warranty lookup instead of searching here.</p>
 
       <h3>2. Enter service tags or serial numbers</h3>
       <p>Type or paste one or more into the box &mdash; one per line, or separated by commas or spaces. Up to 20 at a time. Click <strong>Look Up Information</strong> (or press Ctrl/Cmd&nbsp;+&nbsp;Enter from the box).</p>
@@ -213,6 +217,6 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=1.10.0"></script>
+  <script type="module" src="js/app.js?v=1.11.0"></script>
 </body>
 </html>

@@ -13,7 +13,11 @@ Supported today:
   coverage endpoint. Supports multiple separate Apple orgs (e.g. one per
   school in a trust) — a lookup searches every configured org and reports
   which one actually had the device.
-- **Lenovo** — Coming soon.
+- **Lenovo** — via Lenovo's eSupport WebAPI warranty endpoint.
+- **HP** and **SMART Technologies** — not wired into this tool's own
+  lookup (see "Adding a manufacturer" below for what that would take);
+  their tab is badged "External" and opens the manufacturer's own
+  official warranty checker in a new tab instead.
 
 ## Why a Cloudflare Worker instead of a purely static site
 
@@ -74,7 +78,33 @@ own **API account**, created inside that org's own portal:
 > `APPLE_TOKEN_AUDIENCE`) in case a different org's portal ever points
 > somewhere else.
 
-### 3. Install Wrangler and set secrets
+### 3. Get Lenovo API credentials
+
+Unlike Dell's TechDirect portal, there's no online self-service signup
+for this one:
+
+1. Contact your Lenovo Account Representative, or reach out through the
+   [Lenovo Partner Program](https://www.lenovo.com/partners/), and ask
+   for a `ClientID` for the eSupport WebAPI (warranty lookup).
+2. There's no form to fill in beyond that — Lenovo issues the ClientID
+   directly once your account/partner status is confirmed. This can take
+   noticeably longer than Dell's or Apple's setup, since it depends on a
+   person rather than a portal.
+
+> **Note on API details:** the endpoint, header, and response shape
+> (`InWarranty`/`Purchased`/`Shipped`/`Warranty[]`) in `src/worker.js`
+> are confirmed consistent across Lenovo's own eSupport WebAPI wiki and
+> several independent scripts using it. The one thing that's **not**
+> independently confirmed is the exact field Lenovo uses for the
+> product/model description — no source showed a full raw response
+> including it, so `normalizeLenovoAsset` tries a few plausible field
+> names (`Product`, `ProductName`, `Machine`, `MachineType`) and falls
+> back to "Unknown model" if none match. Worth checking against a real
+> response once `LENOVO_CLIENT_ID` is in place, and adjusting the
+> fallback list in `src/worker.js` if the real field name differs. The
+> host is overridable via `LENOVO_API_HOST` if needed.
+
+### 4. Install Wrangler and set secrets
 
 ```bash
 npm install -g wrangler   # or use npx wrangler for everything below
@@ -120,6 +150,12 @@ then paste something like:
 To add, remove, or update an org later, re-run `wrangler secret put
 APPLE_ORGS` with the full updated array — it replaces the whole secret.
 
+Lenovo just needs the one ClientID from step 3:
+
+```bash
+wrangler secret put LENOVO_CLIENT_ID
+```
+
 For local development, create a `.dev.vars` file (already gitignored)
 instead — `APPLE_ORGS` still needs to be one single-line JSON string:
 
@@ -127,15 +163,16 @@ instead — `APPLE_ORGS` still needs to be one single-line JSON string:
 DELL_CLIENT_ID=xxxxx
 DELL_CLIENT_SECRET=xxxxx
 APPLE_ORGS=[{"name":"St Albans","clientId":"...","keyId":"...","privateKey":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}]
+LENOVO_CLIENT_ID=xxxxx
 ```
 
-### 4. Run it locally
+### 5. Run it locally
 
 ```bash
 npx wrangler dev
 ```
 
-### 5. Deploy
+### 6. Deploy
 
 Manually:
 
@@ -194,15 +231,26 @@ variants with extra padding so OS icon masking doesn't clip the shield).
 
 ## Adding a manufacturer
 
+If it has an API you can get access to:
+
 1. In `src/worker.js`, add a `lookup<Vendor>(tags, env)` function that
    calls that manufacturer's API and returns the same normalized shape
    `lookupDell` does: `{ tag, valid, model, shipDate, status,
-   warrantyEndDate, daysRemaining, entitlements }` (or `{ tag, valid:
-   false, error }` for a tag with no data). Wire it into
+   warrantyEndDate, warrantyMonths, daysRemaining, entitlements }` (or
+   `{ tag, valid: false, error }` for a tag with no data — `monthsBetween`
+   handles the `warrantyMonths` calculation for you). Wire it into
    `handleWarrantyRequest`'s vendor switch.
-2. In `js/app.js`, flip that vendor's `status` in the `VENDORS` array from
-   `'coming-soon'` to `'active'`.
+2. In `js/app.js`, set that vendor's `status` in the `VENDORS` array to
+   `'active'`, with a `tagNoun` and `tagExample`.
 3. Add any new required secrets to the README's setup steps above.
+
+If it doesn't (no API, or access you can't realistically get — HP and
+SMART Technologies are both like this today), set `status: 'external'`
+and an `externalUrl` pointing at the manufacturer's own official warranty
+lookup page instead — no `src/worker.js` changes needed. The tab links
+straight there in a new tab rather than searching in this tool. A vendor
+with neither an API nor a known official lookup page can use
+`status: 'coming-soon'` as a placeholder.
 
 ## Data handling
 
