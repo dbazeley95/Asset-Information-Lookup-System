@@ -591,14 +591,45 @@ async function lookupLenovo(tags, env) {
   return results;
 }
 
-function jsonResponse(body, status = 200) {
+// ---------------------------------------------------------------------
+// CORS — this page's own js/app.js calls /api/warranty/* same-origin, so
+// no CORS headers are needed for that. The XCET Assets tool
+// (assets.xcet.uk) is a separate static site on its own origin that
+// wants to call this endpoint directly from browser JS, which does need
+// them. Kept to an explicit allow-list rather than a wildcard, since
+// this proxies results assembled using real manufacturer API
+// credentials — CORS_ALLOWED_ORIGINS (comma-separated) overrides the
+// default without a code change if another tool needs adding later.
+// ---------------------------------------------------------------------
+const DEFAULT_ALLOWED_ORIGINS = ['https://assets.xcet.uk'];
+
+function getAllowedOrigins(env) {
+  if (!env.CORS_ALLOWED_ORIGINS) return DEFAULT_ALLOWED_ORIGINS;
+  return env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+}
+
+function corsHeaders(request, env) {
+  const origin = request.headers.get('Origin');
+  if (!origin || !getAllowedOrigins(env).includes(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    Vary: 'Origin',
+  };
+}
+
+function jsonResponse(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders },
   });
 }
 
 async function handleWarrantyRequest(request, env, vendor) {
+  const cors = corsHeaders(request, env);
+  const respond = (body, status = 200) => jsonResponse(body, status, cors);
+
   const url = new URL(request.url);
   const rawTags = (url.searchParams.get('tags') || '')
     .split(/[,\s]+/)
@@ -607,18 +638,18 @@ async function handleWarrantyRequest(request, env, vendor) {
   const tags = [...new Set(rawTags.map((t) => t.toUpperCase()))];
 
   if (tags.length === 0) {
-    return jsonResponse({ error: 'Provide at least one service tag via ?tags=' }, 400);
+    return respond({ error: 'Provide at least one service tag via ?tags=' }, 400);
   }
   if (tags.length > MAX_TAGS_PER_REQUEST) {
-    return jsonResponse({ error: `Provide at most ${MAX_TAGS_PER_REQUEST} service tags per lookup.` }, 400);
+    return respond({ error: `Provide at most ${MAX_TAGS_PER_REQUEST} service tags per lookup.` }, 400);
   }
   const badTags = tags.filter((t) => !TAG_PATTERN.test(t));
   if (badTags.length) {
-    return jsonResponse({ error: `These don't look like valid service tags: ${badTags.join(', ')}` }, 400);
+    return respond({ error: `These don't look like valid service tags: ${badTags.join(', ')}` }, 400);
   }
 
   if (vendor !== 'dell' && vendor !== 'apple' && vendor !== 'lenovo') {
-    return jsonResponse({ error: `${vendor} lookups aren't available yet.` }, 400);
+    return respond({ error: `${vendor} lookups aren't available yet.` }, 400);
   }
 
   try {
@@ -630,12 +661,12 @@ async function handleWarrantyRequest(request, env, vendor) {
     } else {
       results = await lookupLenovo(tags, env);
     }
-    return jsonResponse({ results });
+    return respond({ results });
   } catch (err) {
     if (err instanceof WarrantyError) {
-      return jsonResponse({ error: err.message }, err.status);
+      return respond({ error: err.message }, err.status);
     }
-    return jsonResponse({ error: 'Unexpected error contacting the lookup service.' }, 500);
+    return respond({ error: 'Unexpected error contacting the lookup service.' }, 500);
   }
 }
 
@@ -644,6 +675,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith('/api/warranty/')) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+      }
       const vendor = url.pathname.slice('/api/warranty/'.length).replace(/\/$/, '');
       return handleWarrantyRequest(request, env, vendor);
     }
