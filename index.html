@@ -24,15 +24,15 @@
        since browsers cache them by URL far more stubbornly than normal
        page assets, sometimes for days, independent of server cache
        headers. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.13.0" />
-  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.13.0" />
-  <link rel="manifest" href="manifest.webmanifest?v=1.13.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.14.0" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.14.0" />
+  <link rel="manifest" href="manifest.webmanifest?v=1.14.0" />
   <meta name="theme-color" content="#142146" />
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.13.0" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.14.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Asset Lookup" />
-  <link rel="stylesheet" href="css/styles.css?v=1.13.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.14.0" />
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -40,12 +40,12 @@
   <header class="app-header">
     <div class="brand-box">
       <div class="brand-mark" aria-hidden="true">
-        <img src="assets/icons/icon-192.png?v=1.13.0" width="68" height="68" alt="" />
+        <img src="assets/icons/icon-192.png?v=1.14.0" width="68" height="68" alt="" />
       </div>
       <div class="brand-text">
         <h1 class="brand-title">Asset Information Lookup System</h1>
         <div class="version-row">
-          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.13</button>
+          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.14</button>
           <span class="compiled-date">Compiled 18 Aug 2026</span>
         </div>
         <p class="subtitle">Look up manufacturer device and warranty information by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
@@ -154,6 +154,10 @@
          badge bumps. -->
     <div class="changelog-body">
       <div class="changelog-entry">
+        <div class="changelog-entry-head"><span class="changelog-version">1.14</span><h3 class="changelog-title">CORS for the XCET Assets Tool</h3></div>
+        <p>The lookup API (<code>/api/warranty/&lt;vendor&gt;</code>) now allows cross-origin requests from <code>https://assets.xcet.uk</code>, so that tool can call it directly from browser JS &mdash; no need to open this page at all. Allow-listed origins are extendable via a <code>CORS_ALLOWED_ORIGINS</code> Worker variable; see the README.</p>
+      </div>
+      <div class="changelog-entry">
         <div class="changelog-entry-head"><span class="changelog-version">1.13</span><h3 class="changelog-title">Deep Linking From Other Tools</h3></div>
         <p>Another tool can now link straight into a lookup with a URL like <code>?vendor=dell&amp;serial=7XJ4K52</code> &mdash; it selects the right tab and runs the lookup automatically. Works for any vendor with a live lookup (Apple and Dell today, Lenovo automatically once its ClientID lands). See the README for the full parameter reference.</p>
       </div>
@@ -236,6 +240,6 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=1.13.0"></script>
+  <script type="module" src="js/app.js?v=1.14.0"></script>
 </body>
 </html>

@@ -299,6 +299,32 @@ Only Apple and Dell run automatically today; Lenovo will too the moment
 its `status` flips to `'active'` (see "Get Lenovo API credentials"
 above) — no deep-linking code changes needed for that.
 
+### Calling the API directly (no UI involved)
+
+A tool on its own origin — such as the XCET Assets tool at
+`https://assets.xcet.uk` — can skip the UI entirely and call the same
+endpoint this page's own frontend uses, straight from browser JS:
+
+```js
+const res = await fetch('https://warranty-lookup.spaniel95.workers.dev/api/warranty/dell?tags=7XJ4K52');
+const { results } = await res.json();
+// results[0].warrantyMonths, results[0].model, results[0].status, ...
+```
+
+This only works from an origin the Worker has explicitly allow-listed
+for CORS — `https://assets.xcet.uk` is allow-listed by default in
+`src/worker.js` (`DEFAULT_ALLOWED_ORIGINS`). Add more by setting the
+`CORS_ALLOWED_ORIGINS` Worker variable to a comma-separated list, no code
+change needed:
+
+```bash
+npx wrangler secret put CORS_ALLOWED_ORIGINS
+# or add it as a plain (non-secret) var in wrangler.jsonc — it isn't sensitive
+```
+
+The response shape is the same one `renderResults` in `js/app.js` reads
+— see "Adding a manufacturer" above for the full field list per result.
+
 ## Data handling
 
 Lookups are proxied through the Worker but nothing is logged, stored, or
