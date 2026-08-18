@@ -11,7 +11,8 @@ const VENDORS = [
     note: 'Apple lookups can take a while the first time, since they page through your organisation’s full device list — later lookups are faster.',
   },
   { id: 'dell', name: 'Dell', status: 'active', tagNoun: 'service tag', tagExample: 'e.g.\n7XJ4K52\n9P2QR13' },
-  { id: 'lenovo', name: 'Lenovo', status: 'coming-soon' },
+  { id: 'hp', name: 'HP', status: 'external', externalUrl: 'https://support.hp.com/gb-en/check-warranty#multiple' },
+  { id: 'lenovo', name: 'Lenovo', status: 'external', externalUrl: 'https://pcsupport.lenovo.com/gb/en/warranty-lookup#/' },
 ];
 
 const state = {
@@ -114,12 +115,14 @@ function renderVendorTabs() {
   for (const vendor of VENDORS) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'vendor-tab' + (vendor.status !== 'active' ? ' is-disabled' : '');
+    const statusClass = vendor.status === 'external' ? ' is-external' : vendor.status !== 'active' ? ' is-disabled' : '';
+    const tabStatusText = vendor.status === 'active' ? 'Available' : vendor.status === 'external' ? 'External' : 'Coming soon';
+    btn.className = 'vendor-tab' + statusClass;
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', String(vendor.id === state.vendor));
     btn.innerHTML = `
       <span class="vendor-tab-name">${vendor.name}</span>
-      <span class="vendor-tab-status">${vendor.status === 'active' ? 'Available' : 'Coming soon'}</span>
+      <span class="vendor-tab-status">${tabStatusText}</span>
     `;
     btn.addEventListener('click', () => {
       state.vendor = vendor.id;
@@ -133,21 +136,35 @@ function renderVendorTabs() {
 function renderVendorPanel() {
   const vendor = VENDORS.find((v) => v.id === state.vendor);
   const comingSoonPanel = document.getElementById('coming-soon-panel');
+  const externalPanel = document.getElementById('external-panel');
   const lookupPanel = document.getElementById('lookup-panel');
   const resultsPanel = document.getElementById('results-panel');
 
-  if (vendor.status !== 'active') {
+  comingSoonPanel.hidden = true;
+  externalPanel.hidden = true;
+  lookupPanel.hidden = true;
+  resultsPanel.hidden = true;
+
+  if (vendor.status === 'coming-soon') {
     const activeNames = VENDORS.filter((v) => v.status === 'active').map((v) => v.name);
     comingSoonPanel.hidden = false;
-    lookupPanel.hidden = true;
-    resultsPanel.hidden = true;
     document.getElementById('coming-soon-heading').textContent = `${vendor.name} information lookup`;
     document.getElementById('coming-soon-message').textContent =
       `${vendor.name} isn't wired up yet — ${formatList(activeNames)} supported right now. Check back once ${vendor.name} support ships.`;
     return;
   }
 
-  comingSoonPanel.hidden = true;
+  if (vendor.status === 'external') {
+    externalPanel.hidden = false;
+    document.getElementById('external-heading').textContent = `${vendor.name} information lookup`;
+    document.getElementById('external-message').textContent =
+      `${vendor.name} isn't wired into this tool yet, so lookups aren't automated here. Use ${vendor.name}'s own warranty lookup directly instead — it opens in a new tab.`;
+    const link = document.getElementById('external-link');
+    link.href = vendor.externalUrl;
+    link.textContent = `Open ${vendor.name} Warranty Lookup ↗`;
+    return;
+  }
+
   lookupPanel.hidden = false;
   document.getElementById('lookup-heading').textContent = `${vendor.name} information lookup`;
   document.getElementById('lookup-hint').textContent =

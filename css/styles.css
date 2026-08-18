@@ -263,6 +263,13 @@ input:focus-visible {
   color: var(--coming-soon-text);
 }
 
+/* Deliberately not dimmed like .is-disabled — External is a real, usable
+   path (opens the manufacturer's own tool), not a "nothing here yet"
+   placeholder like Coming soon, so it shouldn't read as disabled. */
+.vendor-tab.is-external .vendor-tab-status {
+  color: var(--accent);
+}
+
 .panel {
   background: var(--panel-bg);
   border: 1px solid var(--border);
@@ -296,6 +303,13 @@ input:focus-visible {
   color: var(--coming-soon-text);
 }
 
+#external-panel .hint {
+  margin-bottom: 1rem;
+}
+#external-link {
+  width: fit-content;
+}
+
 textarea {
   width: 100%;
   background: var(--input-bg);
@@ -315,6 +329,7 @@ textarea {
 }
 
 button.primary,
+a.primary,
 button.secondary,
 a.secondary {
   border-radius: 8px;
@@ -327,11 +342,13 @@ a.secondary {
   text-decoration: none;
 }
 
-button.primary {
+button.primary,
+a.primary {
   background: var(--accent);
   color: var(--accent-text);
 }
-button.primary:hover {
+button.primary:hover,
+a.primary:hover {
   filter: brightness(1.08);
 }
 button.primary:disabled {
