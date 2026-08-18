@@ -17,3 +17,12 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler-action's default (3.x) can't parse wrangler.jsonc's
+          # JSONC comments — that support only landed in Wrangler 4 — so it
+          # silently ends up with no `main` field and fails with "Missing
+          # entry-point" even though one is set. Pin an explicit 4.x
+          # version rather than a floating '4' tag, since a floating tag
+          # can resolve to a release with a broken/unpublished dependency
+          # (happened before with 4.122.0's miniflare). 4.123.0 is the
+          # version verified working here (`wrangler deploy --dry-run`).
+          wranglerVersion: '4.123.0'
