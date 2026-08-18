@@ -384,24 +384,54 @@ function normalizeAppleAsset(tag, found) {
   };
 }
 
+// Was previously one generic "misconfigured" message for every failure
+// mode (unset, malformed JSON, wrong shape) — collapsed together, that
+// made a real "still broken after fixing the JSON" report undebuggable
+// from the outside. Each case now says specifically what's wrong.
+const REQUIRED_ORG_FIELDS = ['name', 'clientId', 'keyId', 'privateKey'];
+
 function getAppleOrgs(env) {
-  if (!env.APPLE_ORGS) return [];
-  try {
-    const parsed = JSON.parse(env.APPLE_ORGS);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
+  if (!env.APPLE_ORGS) {
+    throw new WarrantyError(500, 'Apple credentials are not configured on the server (APPLE_ORGS is not set).');
   }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(env.APPLE_ORGS);
+  } catch (err) {
+    throw new WarrantyError(500, `Apple credentials are misconfigured on the server — APPLE_ORGS is not valid JSON: ${err.message}.`);
+  }
+
+  if (!Array.isArray(parsed)) {
+    // The most common way to land here despite having "valid JSON": the
+    // value got wrapped in an extra layer of quotes somewhere along the
+    // way (dashboard UI, a shell escaping the paste, etc.), so it parses
+    // fine but as a *string*, not the array underneath it.
+    throw new WarrantyError(
+      500,
+      `Apple credentials are misconfigured on the server — APPLE_ORGS parsed as ${parsed === null ? 'null' : typeof parsed}, not a JSON array. If this is unexpected, check whether the value ended up wrapped in an extra pair of quotes.`
+    );
+  }
+
+  if (parsed.length === 0) {
+    throw new WarrantyError(500, 'Apple credentials are misconfigured on the server — APPLE_ORGS is an empty array.');
+  }
+
+  const badEntries = parsed
+    .map((org, i) => {
+      const missing = REQUIRED_ORG_FIELDS.filter((f) => typeof org?.[f] !== 'string' || !org[f]);
+      return missing.length ? `entry ${i}${org?.name ? ` ("${org.name}")` : ''} is missing: ${missing.join(', ')}` : null;
+    })
+    .filter(Boolean);
+  if (badEntries.length) {
+    throw new WarrantyError(500, `Apple credentials are misconfigured on the server — ${badEntries.join('; ')}.`);
+  }
+
+  return parsed;
 }
 
 async function lookupApple(tags, env) {
   const orgs = getAppleOrgs(env);
-  if (orgs === null) {
-    throw new WarrantyError(500, 'Apple credentials are misconfigured on the server (APPLE_ORGS is not valid JSON).');
-  }
-  if (orgs.length === 0) {
-    throw new WarrantyError(500, 'Apple credentials are not configured on the server.');
-  }
 
   // Tags run sequentially (each trying every org in parallel) rather than
   // all-tags-all-orgs at once, to keep the burst of concurrent subrequests
