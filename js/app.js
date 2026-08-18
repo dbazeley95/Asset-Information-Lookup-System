@@ -12,7 +12,15 @@ const VENDORS = [
   },
   { id: 'dell', name: 'Dell', status: 'active', tagNoun: 'service tag', tagExample: 'e.g.\n7XJ4K52\n9P2QR13' },
   { id: 'hp', name: 'HP', status: 'external', externalUrl: 'https://support.hp.com/gb-en/check-warranty#multiple' },
-  { id: 'lenovo', name: 'Lenovo', status: 'active', tagNoun: 'serial number', tagExample: 'e.g.\nPF1AAAAA\nR90ABCDE' },
+  {
+    id: 'lenovo',
+    name: 'Lenovo',
+    status: 'pending',
+    tagNoun: 'serial number',
+    tagExample: 'e.g.\nPF1AAAAA\nR90ABCDE',
+    externalUrl: 'https://pcsupport.lenovo.com/gb/en/warranty-lookup#/',
+    pendingMessage: "Native Lenovo lookup is built but not live yet — we're waiting on API access (a ClientID) from Lenovo. Use Lenovo's own warranty lookup directly for now:",
+  },
   { id: 'smarttech', name: 'SMART Tech', status: 'external', externalUrl: 'https://www.smarttech.com/en-gb/support/warranty#productwarranty' },
 ];
 
@@ -116,8 +124,9 @@ function renderVendorTabs() {
   for (const vendor of VENDORS) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    const statusClass = vendor.status === 'external' ? ' is-external' : vendor.status !== 'active' ? ' is-disabled' : '';
-    const tabStatusText = vendor.status === 'active' ? 'Available' : vendor.status === 'external' ? 'External' : 'Coming soon';
+    const statusClass = vendor.status === 'external' ? ' is-external' : vendor.status === 'active' ? '' : ' is-disabled';
+    const tabStatusText =
+      vendor.status === 'active' ? 'Available' : vendor.status === 'external' ? 'External' : vendor.status === 'pending' ? 'Pending' : 'Coming soon';
     btn.className = 'vendor-tab' + statusClass;
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', String(vendor.id === state.vendor));
@@ -175,6 +184,18 @@ function renderVendorPanel() {
   const noteEl = document.getElementById('lookup-note');
   noteEl.textContent = vendor.note || '';
   noteEl.hidden = !vendor.note;
+
+  const pendingBanner = document.getElementById('lookup-pending-banner');
+  const fieldset = document.getElementById('lookup-fieldset');
+  const isPending = vendor.status === 'pending';
+  pendingBanner.hidden = !isPending;
+  fieldset.disabled = isPending;
+  if (isPending) {
+    document.getElementById('lookup-pending-message').textContent = vendor.pendingMessage;
+    const link = document.getElementById('lookup-pending-link');
+    link.href = vendor.externalUrl;
+    link.textContent = `Open ${vendor.name} Warranty Lookup ↗`;
+  }
 }
 
 function formatList(items) {

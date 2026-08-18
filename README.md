@@ -13,7 +13,10 @@ Supported today:
   coverage endpoint. Supports multiple separate Apple orgs (e.g. one per
   school in a trust) — a lookup searches every configured org and reports
   which one actually had the device.
-- **Lenovo** — via Lenovo's eSupport WebAPI warranty endpoint.
+- **Lenovo** — built (via Lenovo's eSupport WebAPI), but badged
+  "Pending" and its lookup form disabled until `LENOVO_CLIENT_ID` is set
+  — see step 3 below. Shows a link to Lenovo's manual lookup in the
+  meantime.
 - **HP** and **SMART Technologies** — not wired into this tool's own
   lookup (see "Adding a manufacturer" below for what that would take);
   their tab is badged "External" and opens the manufacturer's own
@@ -90,6 +93,11 @@ for this one:
    directly once your account/partner status is confirmed. This can take
    noticeably longer than Dell's or Apple's setup, since it depends on a
    person rather than a portal.
+3. Until then, Lenovo's `status` in `js/app.js`'s `VENDORS` array is
+   `'pending'` — the lookup form shows but stays disabled, with a link to
+   Lenovo's own manual warranty lookup above it. Once `LENOVO_CLIENT_ID`
+   is set (step 4 below) and confirmed working, flip that `status` to
+   `'active'` — nothing else needs to change.
 
 > **Note on API details:** the endpoint, header, and response shape
 > (`InWarranty`/`Purchased`/`Shipped`/`Warranty[]`) in `src/worker.js`
@@ -243,6 +251,17 @@ If it has an API you can get access to:
 2. In `js/app.js`, set that vendor's `status` in the `VENDORS` array to
    `'active'`, with a `tagNoun` and `tagExample`.
 3. Add any new required secrets to the README's setup steps above.
+
+If the integration is *built* but you're still waiting on credentials
+(Lenovo's current state — see above), use `status: 'pending'` with both
+a `tagNoun`/`tagExample` (like `'active'`) and an `externalUrl` +
+`pendingMessage` (like `'external'`). The lookup form still renders, but
+disabled/greyed out (a native `<fieldset disabled>`, not just visual —
+the button and textarea genuinely can't be interacted with), with the
+`pendingMessage` and a link to `externalUrl` shown above it as a
+stand-in. Once the secret is actually in place, just flip `status` to
+`'active'` — nothing else changes, since the lookup logic was already
+built and working, only gated behind the UI.
 
 If it doesn't (no API, or access you can't realistically get — HP and
 SMART Technologies are both like this today), set `status: 'external'`
