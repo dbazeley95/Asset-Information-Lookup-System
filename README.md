@@ -93,16 +93,42 @@ Or automatically on every push to `main` via
 ## Project structure
 
 ```
-index.html       Page layout
-css/styles.css   Styling (light/dark aware via prefers-color-scheme, plus
-                 a manual toggle). Colors are CSS custom properties at the
-                 top of the file.
-js/app.js        UI wiring — manufacturer tabs, lookup form, results
-src/worker.js    Cloudflare Worker: /api/warranty/<vendor> endpoint,
-                 Dell OAuth + Asset Entitlements calls, static asset
-                 fallback for everything else
-wrangler.jsonc   Worker + static assets configuration
+index.html            Page layout, Settings/Release Notes/Help dialogs
+css/styles.css        Styling (light/dark aware via prefers-color-scheme,
+                      plus a manual override in Settings). Colors are CSS
+                      custom properties at the top of the file.
+js/app.js             UI wiring — manufacturer tabs, lookup form, results,
+                      dialogs, PWA install prompt
+src/worker.js         Cloudflare Worker: /api/warranty/<vendor> endpoint,
+                      Dell OAuth + Asset Entitlements calls, static asset
+                      fallback for everything else
+wrangler.jsonc        Worker + static assets configuration
+manifest.webmanifest  PWA manifest (name, icons, theme colors)
+service-worker.js     Minimal service worker, exists only to satisfy the
+                      browser's PWA installability check
+assets/x-mark.png     Source X logo
+assets/icons/         Favicon/app icons generated from assets/x-mark.png
+                      composited into the shield mark
 ```
+
+## Installing as an app
+
+This is an installable PWA. On Chrome/Edge (desktop or Android), an
+**Install App** button appears in the Settings pop-out (gear icon, top
+right) once the browser decides the site qualifies — it adds a
+standalone, taskbar/home-screen-pinnable copy with its own icon. Safari
+(iOS/macOS) has no equivalent programmatic prompt, so the button never
+appears there, but **Add to Home Screen** from the Share sheet still
+works and uses the same icon/name.
+
+### Regenerating the icons
+
+`assets/icons/*.png` are all generated from `assets/x-mark.png`
+composited onto a navy shield mark — there's no build step wired up for
+this, so if the source X logo changes, regenerate them by hand (a plain
+square/rounded-square background with the shield outline and X centered
+inside, exported at 32/48/180/192/512px, plus 192/512 "maskable"
+variants with extra padding so OS icon masking doesn't clip the shield).
 
 ## Adding a manufacturer
 
