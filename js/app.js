@@ -22,20 +22,82 @@ function applyTheme(theme) {
   } else {
     document.documentElement.setAttribute('data-theme', theme);
   }
-  const icon = document.getElementById('theme-toggle-icon');
-  icon.textContent = theme === 'dark' ? '\u{1F319}' : theme === 'light' ? '☀️' : '\u{1F5A5}️';
-  document.getElementById('theme-toggle-btn').setAttribute(
-    'aria-label',
-    `Color theme: ${theme}. Click to change.`
-  );
 }
 
 function initTheme() {
-  applyTheme(currentTheme());
-  document.getElementById('theme-toggle-btn').addEventListener('click', () => {
-    const next = THEME_VALUES[(THEME_VALUES.indexOf(currentTheme()) + 1) % THEME_VALUES.length];
-    localStorage.setItem(THEME_KEY, next);
-    applyTheme(next);
+  const theme = currentTheme();
+  applyTheme(theme);
+  const select = document.getElementById('theme-select');
+  select.value = theme;
+  select.addEventListener('change', (e) => {
+    localStorage.setItem(THEME_KEY, e.target.value);
+    applyTheme(e.target.value);
+  });
+}
+
+function initDialogs() {
+  const settingsDialog = document.getElementById('settings-dialog');
+  const releaseNotesDialog = document.getElementById('release-notes-dialog');
+  const helpDialog = document.getElementById('help-dialog');
+
+  // Native <dialog> already closes on Escape and traps focus — this only
+  // adds click-outside-to-close, since that's not built in.
+  function closeOnBackdropClick(dialog) {
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+  }
+
+  // Opens a dialog that's nested under the Settings pop-out (Release
+  // Notes, Help) — closes Settings first so dialogs don't stack.
+  function openFromSettings(dialog) {
+    settingsDialog.close();
+    dialog.showModal();
+  }
+
+  document.getElementById('settings-menu-btn').addEventListener('click', () => settingsDialog.showModal());
+  document.getElementById('settings-dialog-close').addEventListener('click', () => settingsDialog.close());
+  closeOnBackdropClick(settingsDialog);
+
+  document.getElementById('release-notes-btn').addEventListener('click', () => openFromSettings(releaseNotesDialog));
+  document.getElementById('version-badge-btn').addEventListener('click', () => releaseNotesDialog.showModal());
+  document.getElementById('release-notes-close').addEventListener('click', () => releaseNotesDialog.close());
+  closeOnBackdropClick(releaseNotesDialog);
+
+  document.getElementById('help-btn').addEventListener('click', () => openFromSettings(helpDialog));
+  document.getElementById('help-dialog-close').addEventListener('click', () => helpDialog.close());
+  closeOnBackdropClick(helpDialog);
+}
+
+function initPWA() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+
+  // Chrome/Edge fire this when the site qualifies for installation;
+  // Safari/iOS never fires it, so the button just stays hidden there and
+  // Add to Home Screen (Share sheet) is the only install path, as before.
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('install-app-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBtn.hidden = false;
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.hidden = true;
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.hidden = true;
   });
 }
 
@@ -226,6 +288,8 @@ async function runLookup() {
 
 function init() {
   initTheme();
+  initDialogs();
+  initPWA();
   renderVendorTabs();
   renderVendorPanel();
 
