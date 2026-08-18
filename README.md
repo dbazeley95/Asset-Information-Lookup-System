@@ -271,6 +271,34 @@ straight there in a new tab rather than searching in this tool. A vendor
 with neither an API nor a known official lookup page can use
 `status: 'coming-soon'` as a placeholder.
 
+## Deep linking from another tool
+
+Another internal tool (e.g. an assets inventory system) can link straight
+into a lookup instead of a user having to open this tool and type a serial
+in by hand:
+
+```
+https://warranty-lookup.spaniel95.workers.dev/?vendor=dell&serial=7XJ4K52
+```
+
+- `vendor` — one of the `id`s in `js/app.js`'s `VENDORS` array (`apple`,
+  `dell`, `hp`, `lenovo`, `smarttech`). Case-insensitive. If omitted or
+  unrecognised, the page opens on whichever vendor tab is selected by
+  default.
+- `serial` (aliases: `serials`, `tag`, `tags`) — one serial/service tag, or
+  several separated by commas/spaces (same format the lookup box itself
+  accepts). Pre-fills the lookup box.
+- If the resolved vendor currently has a live lookup (`status: 'active'`
+  in `js/app.js`) and a serial was supplied, the lookup runs
+  automatically — the destination page loads straight into results. For a
+  vendor that isn't `'active'` yet (`'pending'`, `'external'`, or
+  `'coming-soon'`), the serial is still pre-filled once that vendor's tab
+  is open, but nothing runs automatically since there's no lookup to run.
+
+Only Apple and Dell run automatically today; Lenovo will too the moment
+its `status` flips to `'active'` (see "Get Lenovo API credentials"
+above) — no deep-linking code changes needed for that.
+
 ## Data handling
 
 Lookups are proxied through the Worker but nothing is logged, stored, or

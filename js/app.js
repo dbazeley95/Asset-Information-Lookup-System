@@ -350,6 +350,33 @@ async function runLookup() {
   }
 }
 
+// Lets another internal tool link straight into a lookup, e.g.
+// /?vendor=dell&serial=7XJ4K52 — see README for the supported params.
+function applyDeepLink() {
+  const params = new URLSearchParams(location.search);
+  const vendorParam = params.get('vendor');
+  const serialParam = params.get('serial') || params.get('tag') || params.get('serials') || params.get('tags');
+
+  let vendor = VENDORS.find((v) => v.id === state.vendor);
+  if (vendorParam) {
+    const match = VENDORS.find((v) => v.id === vendorParam.trim().toLowerCase());
+    if (match) {
+      vendor = match;
+      state.vendor = vendor.id;
+      renderVendorTabs();
+      renderVendorPanel();
+    }
+  }
+
+  if (serialParam) {
+    document.getElementById('tags-input').value = serialParam;
+  }
+
+  if (vendor && vendor.status === 'active' && serialParam) {
+    runLookup();
+  }
+}
+
 function init() {
   initTheme();
   initDialogs();
@@ -368,6 +395,8 @@ function init() {
     setError('');
     document.getElementById('results-panel').hidden = true;
   });
+
+  applyDeepLink();
 }
 
 init();
