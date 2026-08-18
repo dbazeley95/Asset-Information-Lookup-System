@@ -1,4 +1,4 @@
-# Warranty Lookup
+# Asset Information Lookup System
 
 A small web app for looking up manufacturer warranty status by serial
 number / service tag. Static frontend (`index.html`, `css/`, `js/`) plus a
