@@ -2,9 +2,16 @@ const THEME_KEY = 'warranty:v1:theme';
 const THEME_VALUES = ['system', 'light', 'dark'];
 
 const VENDORS = [
+  {
+    id: 'apple',
+    name: 'Apple',
+    status: 'active',
+    tagNoun: 'serial number',
+    tagExample: 'e.g.\nC02XXXXXXL8\nFVFXXXXXXL8',
+    note: 'Apple lookups can take a while the first time, since they page through your organisation’s full device list — later lookups are faster.',
+  },
   { id: 'dell', name: 'Dell', status: 'active', tagNoun: 'service tag', tagExample: 'e.g.\n7XJ4K52\n9P2QR13' },
   { id: 'lenovo', name: 'Lenovo', status: 'coming-soon' },
-  { id: 'apple', name: 'Apple', status: 'active', tagNoun: 'serial number', tagExample: 'e.g.\nC02XXXXXXL8\nFVFXXXXXXL8' },
 ];
 
 const state = {
@@ -146,6 +153,10 @@ function renderVendorPanel() {
   document.getElementById('lookup-hint').textContent =
     `Enter one or more ${vendor.name} ${vendor.tagNoun}s — one per line, or separated by commas/spaces. Up to 20 at a time.`;
   document.getElementById('tags-input').placeholder = vendor.tagExample;
+
+  const noteEl = document.getElementById('lookup-note');
+  noteEl.textContent = vendor.note || '';
+  noteEl.hidden = !vendor.note;
 }
 
 function formatList(items) {
