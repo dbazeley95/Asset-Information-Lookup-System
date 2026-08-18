@@ -1,27 +1,30 @@
 # Asset Information Lookup System
 
-A small web app for looking up manufacturer warranty status by serial
-number / service tag. Static frontend (`index.html`, `css/`, `js/`) plus a
-Cloudflare Worker (`src/worker.js`) that proxies the manufacturer API calls.
+A small web app for looking up manufacturer device and warranty
+information by serial number / service tag. Static frontend
+(`index.html`, `css/`, `js/`) plus a Cloudflare Worker (`src/worker.js`)
+that proxies the manufacturer API calls.
 
 Supported today:
 
 - **Dell** — via the [Dell TechDirect API](https://apidp.dell.com)'s
   Asset Entitlements endpoint.
+- **Apple** — via the Apple School/Business Manager API's AppleCare
+  coverage endpoint. Supports multiple separate Apple orgs (e.g. one per
+  school in a trust) — a lookup searches every configured org and reports
+  which one actually had the device.
 - **Lenovo** — Coming soon.
-- **Apple** — Coming soon (Apple doesn't currently offer a public
-  self-service warranty-check API, so this one may end up manual/limited
-  even once added).
 
 ## Why a Cloudflare Worker instead of a purely static site
 
 The Freshservice Asset Import tool this was modeled on is 100% static —
-no backend, everything runs in the browser. Warranty lookups can't work
-that way: Dell's API requires a confidential OAuth `client_id`/
-`client_secret` exchanged for a bearer token, and it doesn't send
-CORS headers, so a browser can't call it directly without exposing the
-secret in shipped JS. The Worker holds that secret server-side (as a
-Wrangler secret, never committed) and exposes one same-origin endpoint,
+no backend, everything runs in the browser. These lookups can't work that
+way: Dell's API requires a confidential OAuth `client_id`/`client_secret`
+exchanged for a bearer token, and Apple's requires a private-key-signed
+JWT client assertion — neither sends CORS headers, so a browser can't
+call either directly without exposing a secret (or a private key) in
+shipped JS. The Worker holds those credentials server-side (as Wrangler
+secrets, never committed) and exposes one same-origin endpoint,
 `/api/warranty/<vendor>?tags=...`, that the frontend calls instead.
 
 It also still serves the static assets (Workers' `assets` feature), so
@@ -41,7 +44,33 @@ this deploys as a single Worker — no separate Pages project.
    If they differ, no code change is needed — set the `DELL_TOKEN_URL`
    and/or `DELL_WARRANTY_URL` variables instead (see below).
 
-### 2. Install Wrangler and set secrets
+### 2. Get Apple School/Business Manager credentials
+
+Each Apple School Manager (or Business Manager) organisation needs its
+own **API account**, created inside that org's own portal:
+
+1. Sign into [Apple School Manager](https://school.apple.com) (or
+   [Business Manager](https://business.apple.com)).
+2. Select your name (bottom-left) → **Preferences** → **API**.
+3. **Get Started**, give the API account a name, **Create**.
+4. **Generate Private Key** — downloads a `.pem` file. This only happens
+   once; if you lose it, you have to create a new API account.
+5. Select **Manage** to see the account's **Client ID** and **Key ID**.
+6. If you manage more than one org (e.g. separate ASM tenants per
+   school), repeat this for each one — this tool is built to search all
+   of them per lookup, you don't have to pick one.
+
+> **Note on API details:** Apple's own developer docs are JS-rendered and
+> couldn't be fully verified while building this integration. The host
+> (`api-business.apple.com`), OAuth scope (`school.api`), and the
+> `orgDevices` filter syntax in `src/worker.js` are the values several
+> independent third-party writeups converged on, not something confirmed
+> against Apple's primary docs directly — expect a possible debug/adjust
+> pass once you have real credentials to test with. All three are
+> overridable via secrets (`APPLE_API_HOST`, `APPLE_SCOPE`,
+> `APPLE_TOKEN_URL`) without touching code if they turn out wrong.
+
+### 3. Install Wrangler and set secrets
 
 ```bash
 npm install -g wrangler   # or use npx wrangler for everything below
@@ -59,21 +88,50 @@ wrangler secret put DELL_TOKEN_URL
 wrangler secret put DELL_WARRANTY_URL
 ```
 
+Apple's credentials go in as a single JSON secret, `APPLE_ORGS` — one
+array entry per API account from step 2. The private key's newlines need
+to become literal `\n` inside the JSON string (most editors/terminals
+will mangle a multi-line paste otherwise):
+
+```bash
+wrangler secret put APPLE_ORGS
+```
+then paste something like:
+```json
+[
+  {
+    "name": "St Albans",
+    "clientId": "BUSINESSAPI.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "keyId": "XXXXXXXXXX",
+    "privateKey": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg...\n-----END PRIVATE KEY-----"
+  },
+  {
+    "name": "Marlow",
+    "clientId": "BUSINESSAPI.yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+    "keyId": "YYYYYYYYYY",
+    "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+  }
+]
+```
+To add, remove, or update an org later, re-run `wrangler secret put
+APPLE_ORGS` with the full updated array — it replaces the whole secret.
+
 For local development, create a `.dev.vars` file (already gitignored)
-instead:
+instead — `APPLE_ORGS` still needs to be one single-line JSON string:
 
 ```
 DELL_CLIENT_ID=xxxxx
 DELL_CLIENT_SECRET=xxxxx
+APPLE_ORGS=[{"name":"St Albans","clientId":"...","keyId":"...","privateKey":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}]
 ```
 
-### 3. Run it locally
+### 4. Run it locally
 
 ```bash
 npx wrangler dev
 ```
 
-### 4. Deploy
+### 5. Deploy
 
 Manually:
 

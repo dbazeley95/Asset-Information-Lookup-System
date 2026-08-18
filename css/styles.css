@@ -310,7 +310,8 @@ textarea {
 }
 
 button.primary,
-button.secondary {
+button.secondary,
+a.secondary {
   border-radius: 8px;
   padding: 0.6rem 1.1rem;
   font-weight: 600;
@@ -318,6 +319,7 @@ button.secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  text-decoration: none;
 }
 
 button.primary {
@@ -332,12 +334,14 @@ button.primary:disabled {
   cursor: not-allowed;
 }
 
-button.secondary {
+button.secondary,
+a.secondary {
   background: transparent;
   color: var(--text);
   border-color: var(--border);
 }
-button.secondary:hover {
+button.secondary:hover,
+a.secondary:hover {
   border-color: var(--accent);
 }
 
@@ -507,7 +511,8 @@ dialog::backdrop {
   flex-direction: column;
   gap: 0.9rem;
 }
-.settings-menu-body button.secondary {
+.settings-menu-body button.secondary,
+.settings-menu-body a.secondary {
   width: 100%;
   justify-content: center;
 }

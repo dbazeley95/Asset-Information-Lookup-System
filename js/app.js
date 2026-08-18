@@ -2,9 +2,9 @@ const THEME_KEY = 'warranty:v1:theme';
 const THEME_VALUES = ['system', 'light', 'dark'];
 
 const VENDORS = [
-  { id: 'dell', name: 'Dell', status: 'active' },
+  { id: 'dell', name: 'Dell', status: 'active', tagNoun: 'service tag', tagExample: 'e.g.\n7XJ4K52\n9P2QR13' },
   { id: 'lenovo', name: 'Lenovo', status: 'coming-soon' },
-  { id: 'apple', name: 'Apple', status: 'coming-soon' },
+  { id: 'apple', name: 'Apple', status: 'active', tagNoun: 'serial number', tagExample: 'e.g.\nC02XXXXXXL8\nFVFXXXXXXL8' },
 ];
 
 const state = {
@@ -130,18 +130,28 @@ function renderVendorPanel() {
   const resultsPanel = document.getElementById('results-panel');
 
   if (vendor.status !== 'active') {
+    const activeNames = VENDORS.filter((v) => v.status === 'active').map((v) => v.name);
     comingSoonPanel.hidden = false;
     lookupPanel.hidden = true;
     resultsPanel.hidden = true;
-    document.getElementById('coming-soon-heading').textContent = `${vendor.name} warranty lookup`;
+    document.getElementById('coming-soon-heading').textContent = `${vendor.name} information lookup`;
     document.getElementById('coming-soon-message').textContent =
-      `${vendor.name} isn't wired up yet — Dell is the only manufacturer supported right now. Check back once ${vendor.name} support ships.`;
+      `${vendor.name} isn't wired up yet — ${formatList(activeNames)} supported right now. Check back once ${vendor.name} support ships.`;
     return;
   }
 
   comingSoonPanel.hidden = true;
   lookupPanel.hidden = false;
-  document.getElementById('lookup-heading').textContent = `${vendor.name} warranty lookup`;
+  document.getElementById('lookup-heading').textContent = `${vendor.name} information lookup`;
+  document.getElementById('lookup-hint').textContent =
+    `Enter one or more ${vendor.name} ${vendor.tagNoun}s — one per line, or separated by commas/spaces. Up to 20 at a time.`;
+  document.getElementById('tags-input').placeholder = vendor.tagExample;
+}
+
+function formatList(items) {
+  if (items.length <= 1) return `${items[0] || 'Nothing'} is`;
+  if (items.length === 2) return `${items[0]} and ${items[1]} are`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]} are`;
 }
 
 function parseTags(raw) {
@@ -195,7 +205,7 @@ function renderResults(results) {
           <span class="result-tag">${escapeHtml(r.tag)}</span>
           <span class="status-badge status-unknown">No data</span>
         </div>
-        <p class="result-error">${escapeHtml(r.error || 'No warranty information found for this service tag.')}</p>
+        <p class="result-error">${escapeHtml(r.error || 'No matching device found.')}</p>
       `;
       list.appendChild(card);
       continue;
@@ -221,6 +231,7 @@ function renderResults(results) {
         <span class="status-badge status-${r.status}">${statusLabel(r.status)}</span>
       </div>
       <p class="result-meta">
+        ${r.orgName ? `Found in ${escapeHtml(r.orgName)}. ` : ''}
         ${r.shipDate ? `Shipped ${escapeHtml(formatDateUK(r.shipDate))}. ` : ''}
         ${r.warrantyEndDate ? `Warranty through ${escapeHtml(formatDateUK(r.warrantyEndDate))} (${escapeHtml(formatDaysRemaining(r.daysRemaining))}).` : 'No warranty end date on file.'}
       </p>
@@ -279,7 +290,7 @@ async function runLookup() {
     }
     renderResults(data.results || []);
   } catch (err) {
-    setError('Could not reach the warranty service. Check your connection and try again.');
+    setError('Could not reach the lookup service. Check your connection and try again.');
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalLabel;
