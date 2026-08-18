@@ -12,7 +12,7 @@ const VENDORS = [
   },
   { id: 'dell', name: 'Dell', status: 'active', tagNoun: 'service tag', tagExample: 'e.g.\n7XJ4K52\n9P2QR13' },
   { id: 'hp', name: 'HP', status: 'external', externalUrl: 'https://support.hp.com/gb-en/check-warranty#multiple' },
-  { id: 'lenovo', name: 'Lenovo', status: 'external', externalUrl: 'https://pcsupport.lenovo.com/gb/en/warranty-lookup#/' },
+  { id: 'lenovo', name: 'Lenovo', status: 'active', tagNoun: 'serial number', tagExample: 'e.g.\nPF1AAAAA\nR90ABCDE' },
   { id: 'smarttech', name: 'SMART Tech', status: 'external', externalUrl: 'https://www.smarttech.com/en-gb/support/warranty#productwarranty' },
 ];
 

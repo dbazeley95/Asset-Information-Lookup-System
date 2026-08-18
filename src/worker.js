@@ -500,6 +500,97 @@ async function lookupApple(tags, env) {
   return results;
 }
 
+// ---------------------------------------------------------------------
+// Lenovo — a single API key (ClientID) rather than Dell's OAuth or
+// Apple's JWT, but access isn't self-service: Lenovo issues the
+// ClientID through an Account Representative or the Partner Program,
+// not an online signup form. Confirmed against Lenovo's own eSupport
+// WebAPI wiki (github.com/Protirus/PoshLenovo/wiki/Warranty) and
+// several independent scripts using it: endpoint, header, and the
+// InWarranty/Purchased/Shipped/Warranty[] response shape all matched
+// consistently across sources. NOT independently confirmed: the exact
+// field Lenovo uses for the product/model description — no source
+// showed a full raw JSON response including it, so normalizeLenovoAsset
+// tries a few plausible field names and falls back to "Unknown model"
+// if none hit. Worth checking against a real response once
+// LENOVO_CLIENT_ID is in place, and adjusting the fallback chain below
+// if the real field name differs.
+// ---------------------------------------------------------------------
+
+function normalizeLenovoAsset(tag, raw) {
+  const warranties = Array.isArray(raw?.Warranty) ? raw.Warranty : [];
+  if (!raw || warranties.length === 0) {
+    return { tag, valid: false, error: 'No matching device found.' };
+  }
+
+  const mapped = warranties.map((w) => ({
+    serviceLevelDescription: w.Name || w.Type || 'Unknown coverage',
+    serviceLevelCode: w.Type || null,
+    startDate: w.Start ? w.Start.slice(0, 10) : null,
+    endDate: w.End ? w.End.slice(0, 10) : null,
+  }));
+
+  const endDates = mapped.map((e) => e.endDate).filter(Boolean).sort();
+  const warrantyEndDate = endDates.length ? endDates[endDates.length - 1] : null;
+
+  let status = 'unknown';
+  let daysRemaining = null;
+  if (warrantyEndDate) {
+    const end = new Date(`${warrantyEndDate}T23:59:59Z`);
+    daysRemaining = Math.ceil((end.getTime() - Date.now()) / 86_400_000);
+    status = daysRemaining >= 0 ? 'active' : 'expired';
+  }
+
+  const shipDate = (raw.Shipped || raw.Purchased) ? (raw.Shipped || raw.Purchased).slice(0, 10) : null;
+
+  return {
+    tag,
+    valid: true,
+    model: raw.Product || raw.ProductName || raw.Machine || raw.MachineType || 'Unknown model',
+    shipDate,
+    country: null,
+    status,
+    warrantyEndDate,
+    warrantyMonths: monthsBetween(shipDate, warrantyEndDate),
+    daysRemaining,
+    entitlements: mapped,
+  };
+}
+
+async function lookupLenovo(tags, env) {
+  if (!env.LENOVO_CLIENT_ID) {
+    throw new WarrantyError(500, 'Lenovo API credentials are not configured on the server.');
+  }
+  const host = env.LENOVO_API_HOST || 'https://supportapi.lenovo.com';
+
+  // One serial per request — unlike Dell's asset-entitlements endpoint,
+  // nothing in Lenovo's docs or any example found suggests batch lookup
+  // by multiple serials in a single call.
+  const results = [];
+  for (const tag of tags) {
+    const url = new URL(`${host}/v2.5/warranty`);
+    url.searchParams.set('Serial', tag);
+
+    const res = await fetchWithRetry(url, { headers: { ClientID: env.LENOVO_CLIENT_ID } });
+
+    if (res.status === 401 || res.status === 403) {
+      throw new WarrantyError(502, `Lenovo authentication failed (${res.status}) — check LENOVO_CLIENT_ID.`);
+    }
+    if (!res.ok) {
+      // Lenovo's API returns a non-2xx for a serial it doesn't recognise
+      // rather than a 200 with an empty Warranty array, based on the
+      // sources this was built from — treated as "not found" rather
+      // than a hard failure so one bad serial doesn't kill the batch.
+      results.push({ tag, valid: false, error: 'No matching device found.' });
+      continue;
+    }
+
+    const raw = await res.json();
+    results.push(normalizeLenovoAsset(tag, raw));
+  }
+  return results;
+}
+
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -526,12 +617,19 @@ async function handleWarrantyRequest(request, env, vendor) {
     return jsonResponse({ error: `These don't look like valid service tags: ${badTags.join(', ')}` }, 400);
   }
 
-  if (vendor !== 'dell' && vendor !== 'apple') {
+  if (vendor !== 'dell' && vendor !== 'apple' && vendor !== 'lenovo') {
     return jsonResponse({ error: `${vendor} lookups aren't available yet.` }, 400);
   }
 
   try {
-    const results = vendor === 'dell' ? await lookupDell(tags, env) : await lookupApple(tags, env);
+    let results;
+    if (vendor === 'dell') {
+      results = await lookupDell(tags, env);
+    } else if (vendor === 'apple') {
+      results = await lookupApple(tags, env);
+    } else {
+      results = await lookupLenovo(tags, env);
+    }
     return jsonResponse({ results });
   } catch (err) {
     if (err instanceof WarrantyError) {
