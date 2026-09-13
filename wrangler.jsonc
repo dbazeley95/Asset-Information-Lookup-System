@@ -14,5 +14,11 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS"
+  },
+  // Not sensitive, so it lives here (deployed automatically) rather than
+  // as a `wrangler secret put`. Comma-separated list of origins allowed
+  // to call /api/warranty/* via CORS — see src/worker.js and README.md.
+  "vars": {
+    "CORS_ALLOWED_ORIGINS": "https://assets.xcet.uk,https://bart.xcet.uk"
   }
 }

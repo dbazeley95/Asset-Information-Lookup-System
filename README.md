@@ -312,15 +312,23 @@ const { results } = await res.json();
 ```
 
 This only works from an origin the Worker has explicitly allow-listed
-for CORS — `https://assets.xcet.uk` is allow-listed by default in
-`src/worker.js` (`DEFAULT_ALLOWED_ORIGINS`). Add more by setting the
-`CORS_ALLOWED_ORIGINS` Worker variable to a comma-separated list, no code
-change needed:
+for CORS — currently `https://assets.xcet.uk` and `https://bart.xcet.uk`,
+set as a comma-separated `CORS_ALLOWED_ORIGINS` variable in
+`wrangler.jsonc`'s `vars` (not a secret, since an allow-list of public
+origins isn't sensitive — so it's just committed and deploys with
+everything else). To add another origin, edit that one line and push:
 
-```bash
-npx wrangler secret put CORS_ALLOWED_ORIGINS
-# or add it as a plain (non-secret) var in wrangler.jsonc — it isn't sensitive
+```jsonc
+"vars": {
+  "CORS_ALLOWED_ORIGINS": "https://assets.xcet.uk,https://bart.xcet.uk,https://newtool.xcet.uk"
+}
 ```
+
+`src/worker.js`'s `DEFAULT_ALLOWED_ORIGINS` is only a fallback for
+running the Worker somewhere `CORS_ALLOWED_ORIGINS` isn't set (e.g. a
+quick local test) — keep it in sync with `wrangler.jsonc` if you change
+the list, though `wrangler.jsonc` is what actually governs the deployed
+Worker.
 
 The response shape is the same one `renderResults` in `js/app.js` reads
 — see "Adding a manufacturer" above for the full field list per result.
