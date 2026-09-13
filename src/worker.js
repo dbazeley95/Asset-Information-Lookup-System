@@ -598,10 +598,11 @@ async function lookupLenovo(tags, env) {
 // wants to call this endpoint directly from browser JS, which does need
 // them. Kept to an explicit allow-list rather than a wildcard, since
 // this proxies results assembled using real manufacturer API
-// credentials — CORS_ALLOWED_ORIGINS (comma-separated) overrides the
+// credentials — CORS_ALLOWED_ORIGINS (comma-separated, set as a plain
+// `vars` entry in wrangler.jsonc since it isn't sensitive) overrides the
 // default without a code change if another tool needs adding later.
 // ---------------------------------------------------------------------
-const DEFAULT_ALLOWED_ORIGINS = ['https://assets.xcet.uk'];
+const DEFAULT_ALLOWED_ORIGINS = ['https://assets.xcet.uk', 'https://bart.xcet.uk'];
 
 function getAllowedOrigins(env) {
   if (!env.CORS_ALLOWED_ORIGINS) return DEFAULT_ALLOWED_ORIGINS;
