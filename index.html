@@ -1,249 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Asset Information Lookup System</title>
-  <meta name="description" content="Look up manufacturer device and warranty information by serial number or service tag." />
-  <!-- Applies a saved explicit-override theme before first paint, inline and
-       blocking, so there's no flash of the wrong theme while js/app.js
-       (deferred as a module) loads. "System" (the default) leaves no
-       data-theme attribute, so css/styles.css's prefers-color-scheme media
-       query decides instead. -->
-  <script>
-    (function () {
-      var THEME_VALUES = ['light', 'dark'];
-      var theme = localStorage.getItem('warranty:v1:theme');
-      if (THEME_VALUES.indexOf(theme) !== -1) {
-        document.documentElement.setAttribute('data-theme', theme);
-      }
-    })();
-  </script>
-  <!-- ?v= busts the CDN cache on deploy, matching the version badge
-       whenever css/js/manifest/icon files change — favicons especially,
-       since browsers cache them by URL far more stubbornly than normal
-       page assets, sometimes for days, independent of server cache
-       headers. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=1.15.0" />
-  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png?v=1.15.0" />
-  <link rel="manifest" href="manifest.webmanifest?v=1.15.0" />
-  <meta name="theme-color" content="#142146" />
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=1.15.0" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Asset Lookup" />
-  <link rel="stylesheet" href="css/styles.css?v=1.15.0" />
+  <meta http-equiv="refresh" content="0; url=https://bart.xcet.uk" />
+  <title>Asset Information Lookup System — Moved to BART</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png" />
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #14213d;
+      text-align: center;
+      padding: 24px;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0f1622; color: #e7ecf3; }
+    }
+    .card { max-width: 420px; }
+    .card img { width: 64px; height: 64px; margin-bottom: 16px; }
+    .card h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    .card p { margin: 0 0 24px; opacity: 0.75; line-height: 1.5; }
+    .button {
+      display: inline-block;
+      padding: 11px 22px;
+      border-radius: 8px;
+      background: #14213d;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    @media (prefers-color-scheme: dark) {
+      .button { background: #4f7cff; }
+    }
+  </style>
 </head>
 <body>
-  <a href="#main-content" class="skip-link">Skip to main content</a>
-
-  <header class="app-header">
-    <div class="brand-box">
-      <div class="brand-mark" aria-hidden="true">
-        <img src="assets/icons/icon-192.png?v=1.15.0" width="68" height="68" alt="" />
-      </div>
-      <div class="brand-text">
-        <h1 class="brand-title">Asset Information Lookup System</h1>
-        <div class="version-row">
-          <button id="version-badge-btn" type="button" class="version-badge" aria-haspopup="dialog" aria-controls="release-notes-dialog">v1.15</button>
-          <span class="compiled-date">Compiled 18 Aug 2026</span>
-        </div>
-        <p class="subtitle">Look up manufacturer device and warranty information by serial number or service tag. Lookups are proxied through a Cloudflare Worker &mdash; nothing you search is stored.</p>
-      </div>
-      <button id="settings-menu-btn" type="button" class="icon-btn" aria-haspopup="dialog" aria-controls="settings-dialog" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  <div class="app-shell">
-    <nav id="vendor-tabs" class="vendor-tabs" aria-label="Manufacturer"></nav>
-
-    <main id="main-content" tabindex="-1">
-      <section id="coming-soon-panel" class="panel" hidden>
-        <h2 id="coming-soon-heading"></h2>
-        <p id="coming-soon-message" class="hint"></p>
-      </section>
-
-      <section id="external-panel" class="panel" hidden>
-        <h2 id="external-heading"></h2>
-        <p id="external-message" class="hint"></p>
-        <a id="external-link" class="primary" href="#" target="_blank" rel="noopener noreferrer"></a>
-      </section>
-
-      <section id="lookup-panel" class="panel">
-        <h2 id="lookup-heading">Dell information lookup</h2>
-        <p id="lookup-hint" class="hint">Enter one or more Dell service tags &mdash; one per line, or separated by commas/spaces. Up to 20 at a time.</p>
-        <p id="lookup-note" class="hint lookup-note" hidden></p>
-
-        <!-- Shown only for a vendor pending API access (built, not live
-             yet) — see js/app.js's 'pending' status. Points at the
-             manufacturer's own manual lookup as a stand-in until then. -->
-        <div id="lookup-pending-banner" class="lookup-pending-banner" hidden>
-          <p id="lookup-pending-message"></p>
-          <a id="lookup-pending-link" class="primary" href="#" target="_blank" rel="noopener noreferrer"></a>
-        </div>
-
-        <fieldset id="lookup-fieldset" class="lookup-fieldset">
-          <label for="tags-input" class="sr-only">Service tag or serial number</label>
-          <textarea id="tags-input" rows="4" placeholder="e.g.&#10;7XJ4K52&#10;9P2QR13"></textarea>
-          <div class="lookup-actions">
-            <button id="lookup-btn" type="button" class="primary">
-              <span class="btn-icon" aria-hidden="true">&#128269;</span>
-              Look Up Information
-            </button>
-            <button id="clear-btn" type="button" class="secondary">Clear</button>
-          </div>
-        </fieldset>
-        <p id="lookup-error" class="lookup-error" role="alert" hidden></p>
-      </section>
-
-      <section id="results-panel" class="panel" aria-live="polite" hidden>
-        <h2>Results</h2>
-        <div id="results-list" class="results-list"></div>
-      </section>
-    </main>
+  <div class="card">
+    <img src="assets/icons/icon-192.png" width="64" height="64" alt="" />
+    <h1>This tool has moved</h1>
+    <p>Asset Information Lookup is now part of BART. You should be redirected automatically — if not, use the link below.</p>
+    <a class="button" href="https://bart.xcet.uk">Go to BART&nbsp;→</a>
   </div>
-
-  <footer class="app-footer">
-    <p>Not affiliated with Apple, Dell, HP, Lenovo, or SMART Technologies. Coverage and device data comes directly from each manufacturer's own API or official lookup tool.</p>
-  </footer>
-
-  <dialog id="settings-dialog" class="info-dialog" aria-labelledby="settings-dialog-title">
-    <div class="info-dialog-header">
-      <h2 id="settings-dialog-title">Settings</h2>
-      <button id="settings-dialog-close" type="button" class="info-dialog-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="settings-menu-body">
-      <div class="theme-select-wrap">
-        <label for="theme-select" class="sr-only">Theme</label>
-        <select id="theme-select">
-          <option value="system">Theme: System</option>
-          <option value="light">Theme: Light</option>
-          <option value="dark">Theme: Dark</option>
-        </select>
-      </div>
-      <button id="release-notes-btn" type="button" class="secondary" aria-haspopup="dialog" aria-controls="release-notes-dialog">
-        Release Notes
-      </button>
-      <button id="help-btn" type="button" class="secondary" aria-haspopup="dialog" aria-controls="help-dialog">
-        Help
-      </button>
-      <a id="feedback-link" class="secondary" href="mailto:d.bazeley@xaviercet.org.uk?subject=Asset%20Information%20Lookup%20System%20feedback">
-        Leave Feedback
-      </a>
-      <!-- Hidden until the browser actually fires beforeinstallprompt (see
-           js/app.js) — Safari/iOS never fires it, so this stays hidden
-           there and Add to Home Screen (via the Share sheet) is the only
-           install path, same as it always was. -->
-      <button id="install-app-btn" type="button" class="secondary" hidden>
-        Install App
-      </button>
-    </div>
-  </dialog>
-
-  <dialog id="release-notes-dialog" class="info-dialog" aria-labelledby="release-notes-title">
-    <div class="info-dialog-header">
-      <h2 id="release-notes-title">Release Notes</h2>
-      <button id="release-notes-close" type="button" class="info-dialog-close" aria-label="Close">&times;</button>
-    </div>
-    <!-- Newest first — add a new .changelog-entry here whenever the version
-         badge bumps. -->
-    <div class="changelog-body">
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.15</span><h3 class="changelog-title">CORS Allow-List Now Also Covers BART</h3></div>
-        <p><code>https://bart.xcet.uk</code> can now call the lookup API cross-origin too, alongside the Assets tool. The allow-list also moved from a code default to a plain <code>CORS_ALLOWED_ORIGINS</code> variable in <code>wrangler.jsonc</code>, so adding another tool's origin going forward is a one-line edit, no code change.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.14</span><h3 class="changelog-title">CORS for the XCET Assets Tool</h3></div>
-        <p>The lookup API (<code>/api/warranty/&lt;vendor&gt;</code>) now allows cross-origin requests from <code>https://assets.xcet.uk</code>, so that tool can call it directly from browser JS &mdash; no need to open this page at all. Allow-listed origins are extendable via a <code>CORS_ALLOWED_ORIGINS</code> Worker variable; see the README.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.13</span><h3 class="changelog-title">Deep Linking From Other Tools</h3></div>
-        <p>Another tool can now link straight into a lookup with a URL like <code>?vendor=dell&amp;serial=7XJ4K52</code> &mdash; it selects the right tab and runs the lookup automatically. Works for any vendor with a live lookup (Apple and Dell today, Lenovo automatically once its ClientID lands). See the README for the full parameter reference.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.12</span><h3 class="changelog-title">Lenovo Marked Pending, With a Manual Fallback</h3></div>
-        <p>Lenovo's lookup is built (see 1.11) but not live yet &mdash; still waiting on a ClientID from Lenovo. Its tab now reads "Pending", and the lookup form itself shows greyed out and genuinely disabled (not just visually) with a link to Lenovo's own manual warranty lookup above it, so there's still a usable path in the meantime. Switches back to a normal working lookup with no other changes once the credentials are in place.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.11</span><h3 class="changelog-title">Lenovo Now Looks Up Natively</h3></div>
-        <p>Lenovo moves from "External" to a real, built-in lookup &mdash; via Lenovo's eSupport WebAPI, using a ClientID (issued by a Lenovo Account Representative or Partner Program, not an online signup form). Tabs are now Apple, Dell, HP, Lenovo, SMART Tech. HP and SMART Tech stay External for now &mdash; see the README for what it'd take to bring either in-house.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.10</span><h3 class="changelog-title">SMART Technologies, Badged External</h3></div>
-        <p>Added SMART Tech as a fourth "External" tab, alongside HP and Lenovo &mdash; opens SMART Technologies' own product warranty lookup in a new tab.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.9</span><h3 class="changelog-title">HP and Lenovo, Badged External</h3></div>
-        <p>Tabs are now Apple, Dell, HP, Lenovo. HP and Lenovo aren't wired into this tool's own lookup &mdash; their tab is badged "External" (not dimmed like "Coming soon", since this is a real, usable path) and opens straight through to the manufacturer's own official warranty lookup tool in a new tab instead of searching here.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.8</span><h3 class="changelog-title">Warranty (In Months) Badge</h3></div>
-        <p>Each result card now shows a rounded "N mo" badge next to the status badge &mdash; the warranty length in months, from ship date to warranty end date. It's there to read straight into the Freshservice Asset Import tool's <strong>Warranty (In Months)</strong> field when importing devices, instead of having to work it out from the dates by hand.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.7</span><h3 class="changelog-title">Apple Lookups Now Retry Transient Errors</h3></div>
-        <p>Apple requests (token, device list pages, coverage) now retry automatically with backoff on transient failures &mdash; 520/521/522/523/524/525/526/530 (Cloudflare edge error codes, since Apple's API is evidently served through Cloudflare too) and the usual 429/502/503/504. Since a full device-list fetch can mean dozens of sequential page requests for a large organisation, one blip used to fail the whole lookup; now it's retried up to 3 times with exponential backoff before giving up. Genuine failures (bad credentials, not found, etc.) are unaffected and still fail immediately.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.6</span><h3 class="changelog-title">Apple First, and a Heads-Up on First-Lookup Speed</h3></div>
-        <p>Manufacturer tabs now read Apple, Dell, Lenovo (was Dell, Lenovo, Apple). The Apple tab also shows a note that the first lookup after a while can take longer than Dell's, since it pages through the organisation's full device list before it can match a serial &mdash; the result is cached afterwards, so follow-up lookups are quick.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.5</span><h3 class="changelog-title">Clearer Errors When Apple Credentials Are Misconfigured</h3></div>
-        <p>"APPLE_ORGS is not valid JSON" used to cover several genuinely different problems with one identical message &mdash; unset, malformed JSON, valid JSON that isn't an array (e.g. got wrapped in an extra pair of quotes somewhere), an empty array, or an org entry missing a required field. Each now gets its own specific message, so a still-broken setup after a first fix attempt is actually diagnosable from the error text alone. No functional change to working Apple lookups.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.4</span><h3 class="changelog-title">Apple Lookup Fixes, Confirmed Against a Working Script</h3></div>
-        <p>Three fixes to the Apple integration added in 1.3, based on a working PowerShell script already in use here: the API host now correctly points at <code>api-school.apple.com</code> (was defaulting to the Business Manager host); the token request's <code>aud</code> claim now uses the correct separate v2 URL instead of reusing the token endpoint's own URL; and device lookup now pages through each org's full device list rather than relying on a per-serial filter that doesn't actually work, caching the result for 30 minutes per org so repeat lookups stay fast. No visible UI changes.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.3</span><h3 class="changelog-title">Apple Lookup, Leave Feedback, and "Information" Instead of "Warranty"</h3></div>
-        <p>Apple is now a live tab, alongside Dell &mdash; looks up AppleCare/warranty coverage via the Apple School/Business Manager API. If more than one Apple org is configured on the server, every one is searched automatically per serial number, and the result shows which org it was found in. Headings and buttons now say "information" rather than "warranty" throughout (e.g. "Look Up Information"), since Apple results carry more than just warranty status. Settings also gained a <strong>Leave Feedback</strong> mailto link.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.2</span><h3 class="changelog-title">Real Logo, Installable as an App, and a Help Guide</h3></div>
-        <p>The header logo is now twice the size, and the placeholder crossed-line X inside the shield has been replaced with the real hand-painted X mark. The old click-to-cycle theme button is now a Settings pop-out (the gear icon, top right) holding a proper Theme dropdown, this Release Notes panel, a new step-by-step Help guide, and (on Chrome/Edge) an Install App button. The version badge next to the title now shows a Compiled date alongside it, and opens Release Notes directly when clicked.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.1</span><h3 class="changelog-title">Renamed to Asset Information Lookup System, UK Dates</h3></div>
-        <p>Renamed from "Warranty Lookup" to Asset Information Lookup System, matching the project name. Dates (ship date, warranty end date, coverage start/end) now display UK-style (DD/MM/YYYY) instead of ISO. The header/favicon shield's checkmark was replaced with a crossed X mark.</p>
-      </div>
-      <div class="changelog-entry">
-        <div class="changelog-entry-head"><span class="changelog-version">1.0</span><h3 class="changelog-title">Launch</h3></div>
-        <p>Initial release: Dell warranty lookup (up to 20 service tags at once) via a Cloudflare Worker that proxies Dell's TechDirect API, keeping the OAuth client secret server-side. Lenovo and Apple are stubbed as "Coming soon" manufacturer tabs. Deploys automatically to Cloudflare Workers on every push to main via GitHub Actions.</p>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="help-dialog" class="info-dialog" aria-labelledby="help-dialog-title">
-    <div class="info-dialog-header">
-      <h2 id="help-dialog-title">Help Guide</h2>
-      <button id="help-dialog-close" type="button" class="info-dialog-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="help-dialog-body">
-      <h3>1. Pick a manufacturer</h3>
-      <p>Use the tabs near the top &mdash; <strong>Apple</strong> and <strong>Dell</strong> look up automatically here. <strong>Lenovo</strong> is marked "Pending": its lookup form is built but greyed out until API access comes through, with a link to Lenovo's own manual lookup shown above it in the meantime. <strong>HP</strong> and <strong>SMART Tech</strong> are marked "External": neither is wired into this tool at all, so their tab links straight through to the manufacturer's own official warranty lookup instead.</p>
-
-      <h3>2. Enter service tags or serial numbers</h3>
-      <p>Type or paste one or more into the box &mdash; one per line, or separated by commas or spaces. Up to 20 at a time. Click <strong>Look Up Information</strong> (or press Ctrl/Cmd&nbsp;+&nbsp;Enter from the box).</p>
-      <p>For Apple, if more than one Apple School/Business Manager organisation is configured, every one of them is searched automatically &mdash; you don't need to know in advance which school or org a device belongs to.</p>
-
-      <h3>3. Read the results</h3>
-      <p>Each entry gets its own card: model, ship date, a status badge (<strong>Active</strong>/<strong>Expired</strong>/<strong>Unknown</strong>), a warranty-length badge in months, the warranty end date, and a table of every coverage entry on file with its own start/end dates. The months badge is rounded from ship date to warranty end date &mdash; it's there to read straight into the Freshservice Asset Import tool's <strong>Warranty (In Months)</strong> field. An Apple result also shows which org it was found in. An entry with no data on file shows an explanation instead.</p>
-
-      <h3>Settings</h3>
-      <p>The gear icon (top right) opens <strong>Theme</strong> (System/Light/Dark), this <strong>Help</strong> guide, <strong>Release Notes</strong>, <strong>Leave Feedback</strong>, and &mdash; on browsers that support it (Chrome/Edge) &mdash; <strong>Install App</strong>, which adds a standalone, taskbar/home-screen-pinnable copy. Safari/iOS has no equivalent Install button, but Add to Home Screen from the Share sheet works there instead.</p>
-
-      <h3>Your data</h3>
-      <p>Nothing you search is stored. Each lookup is proxied through a Cloudflare Worker straight to the manufacturer's own API and back &mdash; no database, no logging, no analytics.</p>
-    </div>
-  </dialog>
-
-  <script type="module" src="js/app.js?v=1.15.0"></script>
+  <script>
+    location.replace('https://bart.xcet.uk');
+  </script>
 </body>
 </html>

@@ -1,5 +1,15 @@
 # Asset Information Lookup System
 
+> **This tool's UI has moved into BART** (`https://bart.xcet.uk`). The
+> homepage (`index.html`) is now just a redirect there. The Worker API
+> (`src/worker.js`, `/api/warranty/<vendor>`) is still live and still
+> does the actual Dell/Apple/Lenovo lookups — BART calls it directly
+> cross-origin (see "Deep linking from another tool" below), so don't
+> tear it down. `js/app.js` and `css/styles.css` (the old standalone UI)
+> are unused now but left in place rather than deleted, in case they're
+> needed again; see the `backup/pre-bart-redirect-*` branch for the last
+> commit before this change if a full rollback is ever needed.
+
 A small web app for looking up manufacturer device and warranty
 information by serial number / service tag. Static frontend
 (`index.html`, `css/`, `js/`) plus a Cloudflare Worker (`src/worker.js`)
